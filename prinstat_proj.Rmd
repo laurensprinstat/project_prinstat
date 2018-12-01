@@ -136,6 +136,7 @@ data$dbp3[data$dbp3 == 66] <- 101
 data$dbp_mean <- round((data$dbp1 + data$dbp2 + data$dbp3) / 3, 1)
 ```
 
+
 ```{r}
 # Frequencies of measures
 count(data$dbp1)
@@ -275,11 +276,6 @@ ggplot(data, aes(x=dbp_end)) +
   geom_histogram() +
   facet_grid(~treatment) +
   stat_bin(binwidth=5)
-```
-
-```{r}
-ggplot(data, aes(treatment, dbp_end, fill=treatment)) +
-  geom_boxplot()
 ```
 
 ```{r}
