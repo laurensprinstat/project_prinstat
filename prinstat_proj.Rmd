@@ -16,6 +16,7 @@ library(psych)
 library(dplyr)
 library(expss)
 library(qwraps2)
+## Stargazer
 options(qwraps2_markup = "markdown")
 ```
 
@@ -69,6 +70,11 @@ data_low_dose
 
 # Remove observations of patients who didn't take the prescribed medication for more than 40% of all experiment days.
 data <- data[data$dose >= 0.6,]
+
+# Split treatment groups
+treat1 <- data[data$treatment == 1,]
+placebo <- data[data$treatment == 2,]
+treat3 <- data[data$treatment == 3,]
 ```
 
 
@@ -144,7 +150,12 @@ histogram(round(data$dbp_mean, 0), breaks=seq(85,125,1))
 The study population consists of people who suffer from hypertension stage 2 (diastolic bloodpressure above 90). No other criteria seem to have been applied (age, weight, gender).
 
 ```{r}
-# Age by treatment group
+# Add population describtives table
+# Characteristics of the study population table
+```
+
+
+```{r}
 boxplot(data$dbp_mean~data$treatment, data=data, main="DBP by treatment group", xlab="Treatment group", ylab="DBP")
 ```
 
@@ -207,7 +218,7 @@ histogram(round(data$dbp_mean, 2), breaks=seq(90,130,1))
 # Question 2
 
 ```{r}
-describe.by(data %>% select(dbp_mean, dbp1, dbp2, dbp3, dbp_end, dbpdif), group=data$treatment)
+describeBy(data %>% select(dbp_mean, dbp1, dbp2, dbp3, dbp_end, dbpdif), group=data$treatment)
 ```
 
 ```{r}
@@ -266,12 +277,20 @@ ggplot(data, aes(x=dbp_end)) +
   stat_bin(binwidth=5)
 ```
 
+```{r}
+ggplot(data, aes(treatment, dbp_end, fill=treatment)) +
+  geom_boxplot()
+```
 
+```{r}
+library(reshape2)
+# Columns to rows
+data_res <- melt(data, id.vars='treatment', measure.vars=c('dbp_mean','dbp_end'))
 
-
-
-
-
+# Boxplots of placebo and treatment3 before and after the experiment
+ggplot(data_res[data_res$treatment != 1,], aes(x=treatment, y=value, fill=variable)) +
+  geom_boxplot()
+```
 
 
 
