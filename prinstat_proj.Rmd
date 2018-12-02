@@ -409,10 +409,12 @@ Ha: mean(third treatment) - mean(placebo) = diff != 0
 ```{r}
 mean(placebo$dbpdif)
 mean(treat3$dbpdif)
-boxplo
+boxplot(treat3$dbpdif,placebo$dbpdif)
 t.test(treat3$dbpdif, placebo$dbpdif, mu=0, alternative = "two.sided", conf= 0.95, var.eq=F, paired=F)
 ```
 Difference when treament 3 is used is bigger. The diastolic blood pressure decreases significantly more when using Treament 3.
+Assumptions: 
+scale of measurement, random sampling, normality of data distribution, adequacy of sample size -> Scale is not that large, not sure about normal distribution of both populations
 
 ## Not assuming normality 
 Mann-Whitney U test (because we are not sure about the normal distribution of both populations)
@@ -421,6 +423,7 @@ Only one assumption, Samples are independent and randomly drawn
 wilcox.test(treat3$dbpdif, placebo$dbpdif, mu = 0, alt="two.sided", correct= TRUE, paired = FALSE, conf.int = TRUE, exact =FALSE)
 ```
 Same conclusion. The diastolic blood pressure decreases significantly more when using Treament 3.
+In this case I think it is best to use Mann-Whitney since we are not sure about the normal distribution.
 
 
 
