@@ -400,13 +400,27 @@ ggplot(data_res[data_res$treatment != 1,], aes(x=variable, y=value, group=ID)) +
 # Question 3
 
 ## Assuming normality
-
+Welch Two Sample t-test
 H0: The difference in diastolic blood pressure is equal in both the third treatment group and the placebo group.
+Ho: mean(third treatment) - mean(placebo) = diff = 0
+Ha: The difference in dialostic blood pressure is bigger in the third treatment group compared to the placebogroup.
+Ha: mean(third treatment) - mean(placebo) = diff != 0
 
 ```{r}
-
+mean(placebo$dbpdif)
+mean(treat3$dbpdif)
+boxplo
+t.test(treat3$dbpdif, placebo$dbpdif, mu=0, alternative = "two.sided", conf= 0.95, var.eq=F, paired=F)
 ```
+Difference when treament 3 is used is bigger. The diastolic blood pressure decreases significantly more when using Treament 3.
 
+## Not assuming normality 
+Mann-Whitney U test (because we are not sure about the normal distribution of both populations)
+Only one assumption, Samples are independent and randomly drawn
+```{r}
+wilcox.test(treat3$dbpdif, placebo$dbpdif, mu = 0, alt="two.sided", correct= TRUE, paired = FALSE, conf.int = TRUE, exact =FALSE)
+```
+Same conclusion. The diastolic blood pressure decreases significantly more when using Treament 3.
 
 
 
