@@ -113,7 +113,9 @@ treat1$total_dose
 ```
 
 ```{r}
+# Remove observations of patients who didn't take the prescribed treatment at least 80 % of the time
 data <- data[data$dose >= 0.8,]
+# Mention the bias that arises from the removal of observations
 
 # Split treatment groups
 treat1 <- data[data$treatment == 1,]
@@ -167,6 +169,7 @@ They seem to be quite comparable.
 
 Normality?
 DBP is skewed to the right
+Because of the small sample size it's difficult to tell whether dbpdif is normally distributed or not
 
 ## Comparable groups?
 
@@ -216,6 +219,15 @@ histogram(round(data$dose, 2), breaks=seq(0.8,1.40,0.05))
 histogram(round(data$dbp_mean, 2), breaks=seq(90,130,1))
 ```
 
+```{r}
+# Histograms of dbpdif per treatment group
+par(mfrow=c(1,3))
+histogram(treat1$dbpdif, breaks=seq(-35,5,5))
+histogram(placebo$dbpdif, breaks=seq(-25,25,5))
+histogram(treat3$dbpdif, breaks=seq(-45,10,5))
+par(mfrow=c(1,1))
+```
+
 # Question 2
 
 ```{r}
@@ -234,7 +246,7 @@ data %>%
 ```
 
 ```{r}
-# Custom summary table using dplyr (use this one)
+# Custom summary table using dplyr (use this one) - format 1
 summarycols <-
   list(
     "Run-in mean DBP" =
@@ -272,6 +284,94 @@ print(summary_table(dplyr::group_by(data, treatment), summarycols),
 ```
 
 ```{r}
+# Custom summary table using dplyr (use this one) - format 2
+summarycols <-
+  list(
+    "treatment1" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(treat1$dbp_mean),
+        "min" = ~ min(treat1$dbp_mean),
+        "25th" = ~ quantile(treat1$dbp_mean, .25),
+        "Median" = ~ median(treat1$dbp_mean),
+        "75th" = ~ quantile(treat1$dbp_mean, .75),
+        "max" = ~ max(treat1$dbp_mean)
+      ),
+    "placebo" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(placebo$dbp_mean),
+        "min" = ~ min(placebo$dbp_mean),
+        "25th" = ~ quantile(placebo$dbp_mean, .25),
+        "Median" = ~ median(placebo$dbp_mean),
+        "75th" = ~ quantile(placebo$dbp_mean, .75),
+        "max" = ~ max(placebo$dbp_mean)
+      ),
+    "treatment3" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(treat3$dbp_mean),
+        "min" = ~ min(treat3$dbp_mean),
+        "25th" = ~ quantile(treat3$dbp_mean, .25),
+        "Median" = ~ median(treat3$dbp_mean),
+        "75th" = ~ quantile(treat3$dbp_mean, .75),
+        "max" = ~ max(treat3$dbp_mean)
+      )
+  )
+
+summary_table(data, summarycols)
+```
+
+```{r}
+library(reshape2)
+# Columns to rows
+data_pop <- melt(data, id.vars='treatment', measure.vars=c('dbp_mean', 'dbp_end', 'dbpdif'))
+data_pop$ID <- seq.int(nrow(data))
+
+# Custom summary table using dplyr (use this one) - format 3
+summarycols <-
+  list(
+    "treatment1" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(data_pop[data_pop$treatment == 1 & data_pop$variable == variable,]$value),
+        "min" = ~ min(data_pop[data_pop$treatment == 1 & data_pop$variable == variable,]$value),
+        "25th" = ~ quantile(data_pop[data_pop$treatment == 1 & data_pop$variable == variable,]$value, .25),
+        "Median" = ~ median(data_pop[data_pop$treatment == 1 & data_pop$variable == variable,]$value),
+        "75th" = ~ quantile(data_pop[data_pop$treatment == 1 & data_pop$variable == variable,]$value, .75),
+        "max" = ~ max(data_pop[data_pop$treatment == 1 & data_pop$variable == variable,]$value)
+      ),
+    "placebo" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(data_pop[data_pop$treatment == 2 & data_pop$variable == variable,]$value),
+        "min" = ~ min(data_pop[data_pop$treatment == 2 & data_pop$variable == variable,]$value),
+        "25th" = ~ quantile(data_pop[data_pop$treatment == 2 & data_pop$variable == variable,]$value, .25),
+        "Median" = ~ median(data_pop[data_pop$treatment == 2 & data_pop$variable == variable,]$value),
+        "75th" = ~ quantile(data_pop[data_pop$treatment == 2 & data_pop$variable == variable,]$value, .75),
+        "max" = ~ max(data_pop[data_pop$treatment == 2 & data_pop$variable == variable,]$value)
+      ),
+    "treatment3" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(data_pop[data_pop$treatment == 3 & data_pop$variable == variable,]$value),
+        "min" = ~ min(data_pop[data_pop$treatment == 3 & data_pop$variable == variable,]$value),
+        "25th" = ~ quantile(data_pop[data_pop$treatment == 3 & data_pop$variable == variable,]$value, .25),
+        "Median" = ~ median(data_pop[data_pop$treatment == 3 & data_pop$variable == variable,]$value),
+        "75th" = ~ quantile(data_pop[data_pop$treatment == 3 & data_pop$variable == variable,]$value, .75),
+        "max" = ~ max(data_pop[data_pop$treatment == 3 & data_pop$variable == variable,]$value)
+      )
+  )
+
+print(summary_table(dplyr::group_by(data_pop, variable), summarycols),
+      rtitle = "Summary Statistics",
+      cnames = c("dbp_mean", "dbp_end", "dbpdif"))
+```
+
+```{r}
+data_pop
+```
+
+```{r}
+data_pop[data_pop$treatment == 1,]$value
+```
+
+
+```{r}
 ggplot(data, aes(x=dbp_end)) +
   geom_histogram() +
   facet_grid(~treatment) +
@@ -282,6 +382,7 @@ ggplot(data, aes(x=dbp_end)) +
 library(reshape2)
 # Columns to rows
 data_res <- melt(data, id.vars='treatment', measure.vars=c('dbp_mean','dbp_end'))
+data_res$ID <- seq.int(nrow(data))
 
 # Boxplots of placebo and treatment3 before and after the experiment
 ggplot(data_res[data_res$treatment != 1,], aes(x=treatment, y=value, fill=variable)) +
@@ -289,6 +390,22 @@ ggplot(data_res[data_res$treatment != 1,], aes(x=treatment, y=value, fill=variab
 ```
 
 
+```{r}
+# Profile plot
+ggplot(data_res[data_res$treatment != 1,], aes(x=variable, y=value, group=ID)) +
+  geom_point() +
+  geom_line()
+```
+
+# Question 3
+
+## Assuming normality
+
+H0: The difference in diastolic blood pressure is equal in both the third treatment group and the placebo group.
+
+```{r}
+
+```
 
 
 
