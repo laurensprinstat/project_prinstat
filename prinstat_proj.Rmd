@@ -77,7 +77,8 @@ placebo <- data[data$treatment == 2,]
 treat3 <- data[data$treatment == 3,]
 ```
 
-
+#(RB) use of corrplot for more lenient code and report?
+#library(corrplot); corrplot(data, method = "circle")
 ```{r}
 # Correlation coefficient all
 cor(data$weight, data$dose)
@@ -111,7 +112,9 @@ abline(lm(treat1$dose~treat1$dbp_mean), col="red")
 treat1$total_dose <- treat1$dose * 28
 treat1$total_dose
 ```
+#(RB) why only group 1? not sure what you are doing here, please explain
 
+#(RB) double line 71:77, remove?
 ```{r}
 # Remove observations of patients who didn't take the prescribed treatment at least 80 % of the time
 data <- data[data$dose >= 0.8,]
@@ -122,6 +125,58 @@ treat1 <- data[data$treatment == 1,]
 placebo <- data[data$treatment == 2,]
 treat3 <- data[data$treatment == 3,]
 ```
+#(RB) not sure about choosing 80%, seems arbitrary. What about +120% ?. Please consider the outlier procedure I included below
+##
+start
+##
+'1.2. Check for outliers based on quantiles and IQR (upper & lower)'
+
+#outlier check function
+statoutliers <- function(variable){
+Q1_dose<-quantile(
+  variable,0.25,names=FALSE)
+Q3_dose<-quantile(
+  variable,0.75,names=FALSE)
+
+IQR<-IQR(variable)
+lower_limit<-Q1_dose-1.5*IQR
+upper_limit<-Q3_dose+1.5*IQR
+
+print(paste('IQR is', IQR))
+print(paste('lower limit is',lower_limit))
+print(paste('upper limit is',upper_limit))
+
+number_lower_outliers<-sum(
+  variable < lower_limit)
+number_upper_outliers<-sum(
+  variable> upper_limit)
+
+print(paste('the number of lower outliers is', number_lower_outliers))
+print(paste('the number of upper outliers is', number_upper_outliers))
+}
+
+statoutliers(data$dose)
+
+#outlier remove function
+rmstatoutliers<- function(variable, data){
+  Q1_dose<-quantile(
+  variable,0.25,names=FALSE)
+Q3_dose<-quantile(
+  variable,0.75,names=FALSE)
+IQR<-IQR(variable)
+lower_limit<-Q1_dose-1.5*IQR
+upper_limit<-Q3_dose+1.5*IQR
+
+return(data[variable>lower_limit & variable<upper_limit,])
+}
+
+#actual cleaning, 21+3 outliers
+#data <- data[data$dose>lower_limit_dose & data$dose<upper_limit_dose,]
+data <- rmstatoutliers(data$dose, data)
+##
+stop
+##
+
 
 ## DBP run-in period
 -> replace extreme observation of 66 by the mean of the other two measures
@@ -131,6 +186,7 @@ treat3 <- data[data$treatment == 3,]
 data[data$dbp1 < 90 | data$dbp2 < 90 | data$dbp3 < 90,]
 ```
 
+#(RB) 101 is correct but plz make sure it doesnt seem arbitrary
 ```{r}
 # Replace extreme observation
 data$dbp3[data$dbp3 == 66] <- 101
@@ -229,6 +285,7 @@ par(mfrow=c(1,1))
 ```
 
 # Question 2
+#(RB) please consider making a selection of what we will actually use
 
 ```{r}
 describeBy(data %>% select(dbp_mean, dbp1, dbp2, dbp3, dbp_end, dbpdif), group=data$treatment)
@@ -397,6 +454,59 @@ ggplot(data_res[data_res$treatment != 1,], aes(x=variable, y=value, group=ID)) +
   geom_line()
 ```
 
+## (RB) ## Question 2: descriptive analysis of the research question
+Initial conclusion after
+```{r}
+#basic descriptives function
+descriptives <- function(variable){
+  variable <- as.numeric(variable)
+print(paste('mean is',mean(variable)))
+print(paste('median is',median(variable)))
+print(paste('sd is',sd(variable)))
+print(paste('min is',min(variable)))
+print(paste('max is',max(variable)))
+print(summary(variable~data$treatment))
+}
+#Research question: difference between treatment groups
+#look at treatment groups
+
+#final difference
+#control around 0, other dropped by 10 median
+descriptives(data$dbpdif)
+
+#at start1, we can see at visit 1, little to no difference 
+#upper range for control is somewhat larger  
+descriptives(data$dbp1)
+
+#at start2
+descriptives(data$dbp2)
+
+#at start3, same trend visit 3
+descriptives(data$dbp3)
+
+#at end, same trend visit 5
+descriptives(data$dbp5)
+
+#graph 
+par(mfrow=c(1,4)) 
+plot(data$treatment, data$dbp1,
+     ylim=c(70, 130))  # we can see at visit 1, little to no difference
+title('Dbp at Visit 1') 
+plot(data$treatment, data$dbp2,
+     ylim=c(70, 130)) #same trend visit 2
+title('Dbp at Visit 2')
+plot(data$treatment, data$dbp3,
+     ylim=c(70, 130)) #same trend visit 3
+title('Dbp at Visit 3')
+plot(data$treatment, data$dbp5,
+     ylim=c(70, 130)) #same trend visit 3
+title('Dbp at Visit 5')
+par(mfrow=c(1,1)) 
+
+```
+Conclusion q2: At first glance we can see that the groups had a similar bp at intake visits, but the treatment groups(1,3) had a lower bp than before at the final visit. The control group(2) remained more or less stable throughout the study. We can see this as a first indication that the treatment groups did achieve a lower bp.
+
+
 # Question 3
 
 ## Assuming normality
@@ -424,6 +534,118 @@ wilcox.test(treat3$dbpdif, placebo$dbpdif, mu = 0, alt="two.sided", correct= TRU
 ```
 Same conclusion. The diastolic blood pressure decreases significantly more when using Treament 3.
 In this case I think it is best to use Mann-Whitney since we are not sure about the normal distribution.
+
+
+## Question4
+## Assuming normality
+T-test
+Power of the T-test for gender difference of >=4mmHg in the treatment effect
+Here 2 sample T, comparing 2 group means to each other
+```{r}
+library(stats)
+
+#male group
+male <- data[data$sex == 'male',]
+#female group
+female <- data[data$sex == 'female',]
+
+#get variables mean, sd, n,
+m1 <- mean(male$dbp5)
+m2 <- mean(female$dbp5)
+sd1 <- sd(male$dbp5)
+sd2 <- sd(female$dbp5)
+num1 <- length(male$dbp5)
+num2 <- length(female$dbp5)
+
+n <- c(num1,num2)
+mean <- c(m1,m2)
+sd <- c(sd1,sd2)
+df <- data.frame(n,mean,sd)
+
+pooled_sd <- sqrt( sum(df$sd^2 * (df$n - 1)) / (sum(df$n - 1)) )
+
+power.t.test(n=m1+m2, #size
+             delta = 4, #effect size
+             sd = pooled_sd, # use pooled sd cause comparing 2 groups
+             sig.level = 0.05,
+             type= "two.sample", #male & female
+             alternative = 'two.sided' #detect a difference
+             )
+```
+The power to detect a difference of 4hhMg at the 0.05 sign level between male and female using the T-test is 0.93
+
+
+## Not assuming normality
+Power here has to be calculated as a proportion, since we can not use the normal distribution to make inferences
+Do the wilcox test for 1000 samples of random generated data with length, mean and sd as the male and female group to compare. See proportion of p-values smaller than 0.05
+```{r}
+
+pval <- replicate(1000, 
+                  wilcox.test(rnorm(num1,m1,sd1), #male
+                              rnorm(num2,m2,sd2), #female
+                              mu=4)$p.value)      #mean difference to be detected
+summary(pval) 
+sum(pval < .05)/1000
+
+```
+The power decreases severely to 0.515 using this non parametric test
+
+## Question5
+Binary indicator of whether (dbp5-dbp3)<10mmHg between the 2 treatment arms.
+Use appropriate 5% sign level & conclude, how and why do treatment arms differ?
+How does this comparison differ from the one above?
+
+## parametric
+```{r}
+#make binary variable
+data23$binary <- 0
+data23$binary[data23$dbpdif<10]<-1
+
+binTr <-data23[data23$treatment == 'Treatment 3',]$binary
+binPl <-data23[data23$treatment == 'Placebo',]$binary
+
+#using a t-test
+print(t.test(binary~treatment, 
+             data = data23, 
+             alternative = "less")
+             )#since Placebo comes first in data23, x1 less x2
+
+
+#function for calculatin the Z-statistic of 2 binary variables
+#with x=succes(1) and n=total(number 0 & 1's)
+z.prop = function(x1,x2,n1,n2){
+  numerator = (x1/n1) - (x2/n2)
+  p.common = (x1+x2) / (n1+n2)
+  denominator = sqrt(p.common * (1-p.common) * (1/n1 + 1/n2))
+  z.prop.ris = numerator / denominator
+  return(z.prop.ris)
+}
+
+binTr <-data23[data23$treatment == 'Treatment 3',]$binary
+binPl <-data23[data23$treatment == 'Placebo',]$binary
+pasTr <- sum(binTr)
+pasPl <- sum(binPl)
+nTr <- length(passTr) 
+nPl <- length(passPl)
+z.prop(pasTr, pasPl, nTr, nPl)      #optional
+```
+From the 1 sample t-test using the binary indicating whether (dbp5-dbp3)<10mmHg, we can reject the H0 of different group means with a p-value of 0.025.
+Computing a Z-score, we see it surpasses the 0.05 confidence value of 1.96
+
+#non-parametric
+use of prop.test from base R
+H0: proportions in the groups are the same
+```{r}
+prop.test(c(pasTr,pasPl),
+          c(nTr,nPl),
+          alternative = 'greater' #has treatment 3 greater prop of 1's? (data23$dbpdif<10]<-1)
+          )
+
+#qchisq(0.9, 1)
+```
+We see that at the 0.05 accuracy rate we can't reject H0, but at the 0.06 rate we can. Although not overwhelming, we have some indication of Treatment 3 group measures being more below the 10 mmGh limit than placebo measures with this non-parametric test.
+
+The treatments were compared here on a cut-off value of {dbp5-dbp3)<10mmHg}. Instead of comparing the natural group means, we created a yes or no indicator according to our set benchmark. The strength of this test will rely hugely on how well the cut-off value is chosen, and can not be seen as a complete representation of the difference between the groups. Only the difference in relation to the cut-off can be evalueted here.
 
 ## Question 6
 
