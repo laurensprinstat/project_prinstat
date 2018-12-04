@@ -425,6 +425,39 @@ wilcox.test(treat3$dbpdif, placebo$dbpdif, mu = 0, alt="two.sided", correct= TRU
 Same conclusion. The diastolic blood pressure decreases significantly more when using Treament 3.
 In this case I think it is best to use Mann-Whitney since we are not sure about the normal distribution.
 
+## Question 6
+
+expected evolution in blood pressure between visit 5 en 3 in the placebo group.
+
+```{r}
+mean(placebo$dbpdif)
+hist(placebo$dbpdif)
+```
+
+Test if mean for Placebo group is different from 0. 
+H0: mean difference for placebo group is equal to 0
+H1: mean difference for placebo group is not equal to 0
+
+## assuming normality
+using one sample t-test
+```{r}
+t.test(placebo$dbpdif)
+```
+
+We do not reject the 0 hypothesis, so we expect no difference in bloodpressure between visit 5 an visit 3 in the placebo group. This shows that the effect of treat 1 and 3 can not be dedicated to a placebo effect.
+
+## Not assuming normaility 
+using one sample Wilcoxon test
+
+```{r}
+#Samples do not need to be drawn from a population with a normal distribution
+qqnorm(placebo$dbpdif)
+qqline(placebo$dbpdif)
+
+wilcox.test(placebo$dbpdif, mu=0)
+```
+Same conclusion: H0 is not rejected, mean is not different from zero. No placebo effect.
+
 
 
 
