@@ -459,6 +459,61 @@ wilcox.test(placebo$dbpdif, mu=0)
 Same conclusion: H0 is not rejected, mean is not different from zero. No placebo effect.
 
 
+## Question 7 
+
+Does the mean difference in dbpdif between group 3 and group 2 depend on gender? Derive a justified answer.
+2-way anova to see a possible interaction between treat and gender.
+
+```{r}
+library("car")
+str(treat3)
+```
+
+```{r}
+#Nieuw object maken dat enkel data van groepen 2 en 3 bevat
+data23 <- data[which(data$treatment != "1"),]
+data23$treatment <- droplevels(data23$treatment)
+data23$treatment <- as.factor(data23$treatment)
+```
+
+## Visualization
+
+```{r}
+#(!require(devtools)) install.packages("devtools")
+#devtools::install_github("kassambara/ggpubr")
+str(data23)
+library(ggpubr)
+plot <- ggline(data23, x = "treatment", y = "dbpdif", color = "sex",
+               add = c("mean_se", "dotplot"),
+               palette = c("#00AFBB", "#E7B800"))
+plot
+
+```
+Two-way ANOVA with interaction
+Interaction = the effect of one factor on the dependent variable depends on the level of another factor
+```{r}
+model1 <- lm(dbpdif ~ sex * treatment, data = data23)
+anova(model1)
+#type 1 because we are interested in the interaction
+```
+
+There is no interaction, so the mean difference between group 3 and 2 does not depend on gender.
+
+## Check assumptions of the model
+```{r}
+#Assumption 1 : Normal distribution of the model residuals
+plot(model1,2)
+```
+Residuals approximatly normally distributed.
+
+```{r}
+#Assumption 2: Homogeneity of variance of the groups
+plot(model1,1)
+leveneTest(dbpdif ~ sex * treatment, data = data23)
+```
+P-value is larger than 0.05 so variances are approximatly equal.
+Both assumptions are met.
+
 
 
 
