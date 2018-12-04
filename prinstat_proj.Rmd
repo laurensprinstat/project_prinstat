@@ -504,7 +504,9 @@ title('Dbp at Visit 5')
 par(mfrow=c(1,1)) 
 
 ```
-Conclusion q2: At first glance we can see that the groups had a similar bp at intake visits, but the treatment groups(1,3) had a lower bp than before at the final visit. The control group(2) remained more or less stable throughout the study. We can see this as a first indication that the treatment groups did achieve a lower bp.
+Conclusion q2: At first glance we can see that the groups had a similar bp at intake visits, but the treatment groups(1,3)
+had a lower bp than before at the final visit. The control group(2) remained more or less stable throughout the study. 
+We can see this as a first indication that the treatment groups did achieve a lower bp.
 
 
 # Question 3
