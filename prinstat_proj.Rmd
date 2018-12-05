@@ -457,35 +457,15 @@ ggplot(data_res[data_res$treatment != 1,], aes(x=variable, y=value, group=ID)) +
 ## (RB) ## Question 2: descriptive analysis of the research question
 Initial conclusion after
 ```{r}
-#basic descriptives function
-descriptives <- function(variable){
-  variable <- as.numeric(variable)
-print(paste('mean is',mean(variable)))
-print(paste('median is',median(variable)))
-print(paste('sd is',sd(variable)))
-print(paste('min is',min(variable)))
-print(paste('max is',max(variable)))
-print(summary(variable~data$treatment))
-}
 #Research question: difference between treatment groups
 #look at treatment groups
 
 #final difference
-#control around 0, other dropped by 10 median
-descriptives(data$dbpdif)
-
+#control around 0, other dropped by 10 median in final condition
 #at start1, we can see at visit 1, little to no difference 
 #upper range for control is somewhat larger  
-descriptives(data$dbp1)
+summary(data)
 
-#at start2
-descriptives(data$dbp2)
-
-#at start3, same trend visit 3
-descriptives(data$dbp3)
-
-#at end, same trend visit 5
-descriptives(data$dbp5)
 
 #graph 
 par(mfrow=c(1,4)) 
