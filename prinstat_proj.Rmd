@@ -488,6 +488,29 @@ Conclusion q2: At first glance we can see that the groups had a similar bp at in
 had a lower bp than before at the final visit. The control group(2) remained more or less stable throughout the study. 
 We can see this as a first indication that the treatment groups did achieve a lower bp.
 
+##TS: Dit is wat ik gedaan had voor Q2 (waarschijnlijk veel overlap, maar voor de volledigheid):
+#Data inlezen en aanpassen
+data <- read.csv("C:/Data/PhD/Statistiek/Project/bptrial.txt")
+data$dbp5 <- data$dbp3 + data$dbpdif
+data$trt <- as.factor(as.character(data$trt))
+data$sex <- as.factor(as.character(data$sex))
+colnames(data) <- c("treatment", "sex", "weight", "age", "active_dose", "dbpdif", "dbp3", "dbp2", "dbp1","dbp5")
+levels(data$treatment) <- c("Treatment 1", "Placebo", "Treatment 3")
+
+#Boxplot van de resultaten in de verschillende behandelingsgroepen maken
+boxplot(data$dbpdif~data$treatment, data=data, main="Differences in diastolic blood pressure", xlab= "Treatment group",
+        ylab="Blood pressure difference (mmHg)")
+
+#Tabel van gemiddelden en standaardeviaties van de verschillende groepen maken (ook voor de geslachten apart)
+table_total <- with(data, tapply(dbpdif, treatment, function(x) paste(round(mean(x)), "±", round(sd(x)))))
+table_male <- with(data[which(data$sex == 1),], tapply(dbpdif, treatment, function(x) 
+  paste(round(mean(x)), "±", round(sd(x)))))
+table_female <- with(data[which(data$sex == 0),], tapply(dbpdif, treatment, function(x) 
+  paste(round(mean(x)), "±", round(sd(x)))))
+table_all <- noquote (rbind(table_total, table_male, table_female))
+rownames(table_all) <- c("Total", "Male", "Female")
+write.table(noquote(table_all), "table.txt", quote = FALSE, sep = ",", row.names = TRUE, col.names = NA)
+
 
 # Question 3
 
@@ -517,6 +540,28 @@ wilcox.test(treat3$dbpdif, placebo$dbpdif, mu = 0, alt="two.sided", correct= TRU
 Same conclusion. The diastolic blood pressure decreases significantly more when using Treament 3.
 In this case I think it is best to use Mann-Whitney since we are not sure about the normal distribution.
 
+##TS: Ik zet hier gewoon mijn code tussen, waarschijnlijk overlapt het heel erg met het vorige, maar wie weet halen we er nog iets nuttigs uit.
+
+##Vraag 3
+#Nieuw object maken dat enkel data van groepen 2 en 3 bevat
+data23 <- data[which(data$treatment != "Treatment 1"),]
+data23$treatment <- droplevels(data23$treatment)
+
+#QQ-plot maken
+qqnorm(data23$dbpdif)
+qqline(data23$dbpdif)
+
+#Varianties vergelijken
+variances <- with(data23, tapply(dbpdif, treatment, function(x) round( var(x), digits = 2) ) )
+
+#Varianties testen
+print(bartlett.test(dbpdif~treatment,data = data23))
+
+#Parametrisch testen met T-test
+print(t.test(dbpdif~treatment, data = data23, alternative = "greater"))
+
+#non=parametrisch testen met Mann-Whitney U test
+print(wilcox.test(formula = dbpdif~treatment, data = data23, alternative = "greater", exact = FALSE))
 
 ## Question4
 ## Assuming normality
