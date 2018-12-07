@@ -63,13 +63,13 @@ summary(data$dose)
 # Dose by treatment group
 boxplot(data$dose~data$treatment, data=data, main="Dose by treatment group", xlab="Treatment group", ylab="Dose")
 
-# Patients who didn't take pills at least 60% of the experimental days
+# Patients who didn't take pills at least 80% of the experimental days
 data <- data[order(data$dose),]
-data_low_dose <- data[data$dose < 0.6,]
+data_low_dose <- data[data$dose < 0.8,]
 data_low_dose
 
 # Remove observations of patients who didn't take the prescribed medication for more than 40% of all experiment days.
-data <- data[data$dose >= 0.6,]
+data <- data[data$dose >= 0.8,]
 
 # Split treatment groups
 treat1 <- data[data$treatment == 1,]
@@ -126,6 +126,8 @@ placebo <- data[data$treatment == 2,]
 treat3 <- data[data$treatment == 3,]
 ```
 #(RB) not sure about choosing 80%, seems arbitrary. What about +120% ?. Please consider the outlier procedure I included below
+#(TS) 80% is indeed an arbitrary, but commonly used cut-off in clinical trials: "the vast majority of publications still classify patients in a dichotomous fashion based on an 80% adherence cut-off rule derived from pill count", from: https://academic.oup.com/eurheartj/advance-article/doi/10.1093/eurheartj/ehy377/5050879 I think that the cut-off should be chosen on the basis of common clinical practice and should be independend of the adherence observed in our trial, so I don't think we should use an outlier exclusion procedure. Instead, I changed the 0.6 above to 0.8. This excludes 29 patients (compared to 20 for the 60% cut-off).
+
 ##
 start
 ##
@@ -180,7 +182,7 @@ stop
 
 ## DBP run-in period
 -> replace extreme observation of 66 by the mean of the other two measures
-
+#TS: I am not sure if we should do this. This value is indeed an extreme outlier that is strange, but not necessarily impossible. There is also an exremely high observation: one patient (nr. 148 in the original dataset) had a dbp3 value of 130, while dbp1 and dbp2 were 100 and 102. Although some elevation in this period is expected from the study design, this one seems very high and sudden. If we want to adapt the extremely low value, I think we should also adapt this high value or have a very strong argument for not doing so. I think I would actually prefer to leave the values as they are.
 ```{r}
 # Diastolic bloodpressure below 90 during one of the measurements during the run-in period
 data[data$dbp1 < 90 | data$dbp2 < 90 | data$dbp3 < 90,]
