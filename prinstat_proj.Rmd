@@ -265,6 +265,14 @@ boxplot(data$dbp_mean~data$treatment, data=data, main="Age by treatment group", 
 
 ## Normality?
 
+#(TS) I think the best way to assess normality is by making QQ-plots:
+qqnorm(data$dbpdif)
+qqnorm(data$dbp3)
+qqnorm(data$dbp_end)
+qqnorm(data$age)
+qqnorm(data$weight)
+#Based on these, I would say that dbpdif and weight are normally distributed, while the others are not.
+
 ```{r}
 describe(data) 
 ```
@@ -456,6 +464,18 @@ ggplot(data_res[data_res$treatment != 1,], aes(x=variable, y=value, group=ID)) +
   geom_line()
 ```
 
+#(TS) I would use the dbp3 or the mean of dbp2 and dpb3, but not the mean of dbp 1-3. dbp1 is measured at the moment that previous medication is disontinued, so it is influenced by the previous medication. 
+#I would also make a more stringent selection of the values that we want to represent, because mean, sd, min, Q2, median, Q3 and max for every variable is really a lot. If we select certain values, we can show that we have considered which values are important for the reader and which values fit the data. My selection would be to represent the median and IQR for dbp3 and dbp_end, as these are not normally distributed, and mean and sd for dbpdif, as it is normally distributed. My (primitive) table would look like this:
+table_dbp3 <- with(data, tapply(dbp3, treatment, function(x) 
+  paste0(round(mean(x)), " (", IQR(x), ")")))
+table_dbp_end <- with(data, tapply(dbp_end, treatment, function(x) 
+  paste0(round(mean(x)), " (", IQR(x), ")")))
+table_dbpdif <- with(data, tapply(dbpdif, treatment, function(x) paste(round(mean(x)), "±", round(sd(x)))))
+table_all <- noquote ( t( rbind(table_dbp3, table_dbp_end, table_dbpdif)))
+rownames(table_all) <- c("Traetment 1", "Placebo", "Treatment 3")
+colnames(table_all) <- c("dbp3 - median (IQR)", "dbp5 - median (IQR)", "dpbdif - mean ± sd")
+table_all
+
 ## (RB) ## Question 2: descriptive analysis of the research question
 Initial conclusion after
 ```{r}
@@ -517,6 +537,10 @@ write.table(noquote(table_all), "table.txt", quote = FALSE, sep = ",", row.names
 # Question 3
 
 ## Assuming normality
+#TS In this question and question 4 we test two-sided, but in question 5 we test one-sided. The questions do not explicitly say that treatment 3 should have a greater difference, so we can test two-sided. On the other hand, the purpose of this experiment is to find a treatment that causes a greater reduction then the placebo, which implies one sided testing. I think that both can be used if supported by good arguments, but we must make sure that we use the same in question 3, 4 and 5.
+#My preference would be to test one-sided. As the questions are "suggesting natural steps", I think we do not have to take them literally, but can choose what we think fits the research question best. What do you think?
+
+
 Welch Two Sample t-test
 H0: The difference in diastolic blood pressure is equal in both the third treatment group and the placebo group.
 Ho: mean(third treatment) - mean(placebo) = diff = 0
