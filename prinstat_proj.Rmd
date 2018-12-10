@@ -33,6 +33,9 @@ data$dbp_end <- data$dbp3 + data$dbpdif
 # Mean dbp during the run-off period
 data$dbp_mean <- round((data$dbp1 + data$dbp2 + data$dbp3) / 3, 1)
 
+# !!!!!!!!!!!!!!! Non-modified data - to adjust
+data_raw <- data
+
 # Treatment group as factor
 data$treatment <- as.factor(data$treatment)
 
@@ -78,34 +81,15 @@ treat3 <- data[data$treatment == 3,]
 ```
 
 #(RB) use of corrplot for more lenient code and report?
-#library(corrplot); corrplot(data, method = "circle")
+# Atm making use of the raw base data - will change it
 ```{r}
-# Correlation coefficient all
-cor(data$weight, data$dose)
-cor(data$weight, data$dbp_mean)
-cor(data$weight, data$age)
+library(corrplot);
+corrplot(cor(data_raw), method = "ellipse")
 
-# Correlation by treatment group - weight
-cor(treat1$weight, treat1$dose)
-cor(placebo$weight, placebo$dose)
-cor(treat3$weight, treat3$dose)
-
-# Correlation by treatment group - age
-cor(treat1$age, treat1$dose)
-cor(placebo$age, placebo$dose)
-cor(treat3$age, treat3$dose)
-
-# Correlation by treatment group - dbp mean
-cor(treat1$dbp_mean, treat1$dose)
-cor(placebo$dbp_mean, placebo$dose)
-cor(treat3$dbp_mean, treat3$dose)
-```
-
-```{r}
-# Scatterplot
-plot(treat1$dbp_mean, treat1$dose)
-# Regression line
-abline(lm(treat1$dose~treat1$dbp_mean), col="red")
+# By treatment group
+corrplot(cor(data_raw[data_raw$trt == 1,]), method = "ellipse")
+corrplot(cor(data_raw[data_raw$trt == 2,]), method = "ellipse")
+corrplot(cor(data_raw[data_raw$trt == 3,]), method = "ellipse")
 ```
 
 ```{r}
