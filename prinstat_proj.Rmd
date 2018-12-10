@@ -641,6 +641,7 @@ data23$binary[data23$dbpdif<10]<-1
 binTr <-data23[data23$treatment == 'Treatment 3',]$binary
 binPl <-data23[data23$treatment == 'Placebo',]$binary
 
+##TS: I don't think that a T-test is suitable, as binary data are not (by definition, I think) normally distributed
 #using a t-test
 print(t.test(binary~treatment, 
              data = data23, 
