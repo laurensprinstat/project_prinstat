@@ -229,8 +229,12 @@ Describe the study population and hence the scope of the evaluation.
 The study population consists of people who suffer from hypertension stage 2 (diastolic bloodpressure above 90). No other criteria seem to have been applied (age, weight, gender).
 
 ```{r}
-# Add population describtives table
-# Characteristics of the study population table
+library(tableone)
+CreateTableOne(data=data)
+```
+
+```{r}
+CreateTableOne(vars=c("age", "weight", "dose", "dbp1", "dbp2", "dbp3", "dbp_end", "dbpdif", "sex"), strata="treatment" , data=data, factorVars="")
 ```
 
 The mean dbp is higher for the placebo group
