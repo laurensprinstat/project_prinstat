@@ -229,6 +229,11 @@ Describe the study population and hence the scope of the evaluation.
 The study population consists of people who suffer from hypertension stage 2 (diastolic bloodpressure above 90). No other criteria seem to have been applied (age, weight, gender).
 
 ```{r}
+library(moonBook)
+mytable(treatment~.,data=data)
+```
+
+```{r}
 library(tableone)
 CreateTableOne(data=data)
 ```
