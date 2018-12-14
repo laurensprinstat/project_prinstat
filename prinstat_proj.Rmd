@@ -560,51 +560,43 @@ Power of the T-test for gender difference of >=4mmHg in the treatment effect
 Here 2 sample T, comparing 2 group means to each other
 ```{r}
 #male group
-male <- data[data$sex == 'male',]
+male <- data23[data23$sex == 'male',]
 #female group
-female <- data[data$sex == 'female',]
+female <- data23[data23$sex == 'female',]
 #get variables mean, sd, n,
-m1 <- mean(male$dbp_end)
-m2 <- mean(female$dbp_end)
-sd1 <- sd(male$dbp_end)
-sd2 <- sd(female$dbp_end)
-num1 <- length(male$dbp_end)
-num2 <- length(female$dbp_end)
+num1 <- length(male[male$treatment==3,]$dbp_end)
+num2 <- length(female[female$treatment==3,]$dbp_end)
+m1 <- mean(male[male$treatment==3,]$dbp_end)
+m2 <- mean(female[female$treatment==3,]$dbp_end)
+var1 <- var(male[male$treatment==3,]$dbp_end)
+var2 <- var(female[female$treatment==3,]$dbp_end)
+sd1 <- sd(male[male$treatment==3,]$dbp_end)
+sd2 <- sd(female[female$treatment==3,]$dbp_end)
+se <- sqrt(sd1*sd1/num1+sd2*sd2/num2)
+
+
+#equal var: yes
+var.test(dbp_end~sex, data23[data23$treatment==3,])
+
+#equal var, use pooled sd
 n <- c(num1,num2)
 mean <- c(m1,m2)
 sd <- c(sd1,sd2)
-
-#equal var?
-var.test(dbpdif~sex, data)
-
 df <- data.frame(n,mean,sd)
+
 pooled_sd <- sqrt( sum(df$sd^2 * (df$n - 1)) / (sum(df$n - 1)) )
 
-
-power.t.test(n= num1 + num2, #size
+#use of standard function
+power.t.test(n= n, #size
              delta = 4, #effect size
-             sd = pooled_sd, # use pooled sd, is wrong will update
+             sd = pooled_sd, 
              sig.level = 0.95,
              type= "two.sample", #male & female
              alternative = 'two.sided' #detect a difference
              )
 
+#compute by hand, not achieving same result
 
-alpha<-0.05
-theta<-4
-mu<- mean(data$dbpdif)
-n<- length(data)
-var <- var(data$dbpdif)
-crit.l <- qnorm(alpha/2, mu, sqrt(var/ n))    ## Critical Value Based on Null
-crit.h <- qnorm(1-alpha/2, mu, sqrt(var/ n))  ## Critical Value Based on Null
-pr.high <- pnorm(crit.h, theta, sd = sqrt(var/ n),lower.tail<-FALSE) ## Prob Reject High
-pr.low  <- pnorm(crit.l, theta, sd = sqrt(var/ n))                  ## Prob Reject Low
-pow <- pr.low+pr.high
-
-pow
-
-
-#both have ~ same conclusion 
 ```
 The power to detect a difference of 4hhMg at the 0.05 sign level between male and female using the T-test is 0.97
 
