@@ -423,8 +423,6 @@ rownames(table_all) <- c("Traetment 1", "Placebo", "Treatment 3")
 colnames(table_all) <- c("dbp3 - median (IQR)", "dbp5 - median (IQR)", "dpbdif - mean ± sd")
 table_all
 ```
-(RB) General remark for Q1&2: aim at telling an a-b-c story where every graph and plot answer a question or adds information. fe extensive tables are produced without conclusions. 
-
 
 (RB) ## Question 2: descriptive analysis of the research question
 Initial conclusion after
