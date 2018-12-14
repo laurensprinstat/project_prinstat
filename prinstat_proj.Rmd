@@ -598,7 +598,7 @@ power.t.test(n= n, #size
 #compute by hand, not achieving same result
 
 ```
-The power to detect a difference of 4hhMg at the 0.05 sign level between male and female using the T-test is 0.97
+The power to detect a difference of 4hhMg at the 0.05 sign level between male and female using the T-test 
 
 
 ## Non-parametric
