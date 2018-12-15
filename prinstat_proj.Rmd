@@ -155,16 +155,6 @@ qqnorm(data$dbp3);qqline(data$dbp3)
 qqnorm(data$age);qqline(data$age)
 qqnorm(data$weight);qqline(data$weight)
 
-# Test the normality
-shapiro.test(treat1$dbpdif)
-shapiro.test(placebo$dbpdif)
-shapiro.test(treat3$dbpdif)
-
-shapiro.test(data$dbp3)
-
-shapiro.test(treat1$dbp_end)
-shapiro.test(placebo$dbp_end)
-shapiro.test(treat3$dbp_end)
 ```
 
 ### Independence
