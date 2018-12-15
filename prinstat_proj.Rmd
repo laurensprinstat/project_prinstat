@@ -297,7 +297,9 @@ Ha: The difference in dialostic blood pressure is bigger in the third treatment 
 Ha: mean(third treatment) - mean(placebo) = diff != 0
 
 ```{r}
-t.test(treat3$dbpdif, placebo$dbpdif, mu=0, alternative = "two.sided", conf= 0.95, var.eq=F, paired=F)
+data23 <- data[which(data$treatment != "Treatment 1"),]
+data23$treatment <- droplevels(data23$treatment)
+t.test(dbpdif~treatment, data = data23, mu=0, alternative = "greater", conf= 0.95, var.eq=T, paired=F)
 ```
 
 The difference between DBP measures is greater for treatment 3. The diastolic blood pressure decreases significantly more when using Treament 3.
@@ -308,18 +310,12 @@ scale of measurement, random sampling, normality of data distribution, adequacy 
 Mann-Whitney U test (because we are not sure about the normal distribution of both populations)
 Only one assumption, Samples are independent and randomly drawn
 ```{r}
-wilcox.test(treat3$dbpdif, placebo$dbpdif, mu = 0, alt="two.sided", correct= TRUE, paired = FALSE, conf.int = TRUE, exact =FALSE)
+wilcox.test(formula = dbpdif~treatment, data = data23, mu = 0, alt="greater", correct= TRUE, paired = FALSE, conf.int = TRUE, exact =FALSE)
 ```
 Same conclusion. The diastolic blood pressure decreases significantly more when using Treament 3.
 In this case I think it is best to use Mann-Whitney since we are not sure about the normal distribution.
 
-TS: Ik zet hier gewoon mijn code tussen, waarschijnlijk overlapt het heel erg met het vorige, maar wie weet halen we er nog iets nuttigs uit.
 
-Nieuw object maken dat enkel data van groepen 2 en 3 bevat
-```{r}
-data23 <- data[which(data$treatment != "Treatment 1"),]
-data23$treatment <- droplevels(data23$treatment)
-```
 
 Varianties vergelijken
 ```{r}
@@ -328,11 +324,6 @@ variances <- with(data23, tapply(dbpdif, treatment, function(x) round( var(x), d
 #Varianties testen
 print(bartlett.test(dbpdif~treatment,data = data23))
 
-#Parametrisch testen met T-test
-print(t.test(dbpdif~treatment, data = data23, alternative = "greater"))
-
-#non=parametrisch testen met Mann-Whitney U test
-print(wilcox.test(formula = dbpdif~treatment, data = data23, alternative = "greater", exact = FALSE))
 ```
 
 ------------------------------------------------------------------------------------------
