@@ -187,8 +187,30 @@ boxplot(data$dbp_end~data$treatment, main="Final DBP measure by group")
 ```
 
 ### Homogenity of variances
+This was only tested for groups 2 and 3, as only these groups are used in the formal analysis.
+
+```{r}
+# Creating a dataset with only treatment 2 and 3
+data23 <- data[which(data$treatment != "Treatment 1"),]
+data23$treatment <- droplevels(data23$treatment)
+
+# Comparing the variances of both groups
+with(data23, tapply(dbpdif, treatment, function(x) round( var(x), digits = 2) ) )
+
+# Formal testing via the F-ratio test
+var.test(dbpdif~treatment,data = data23)
+```
+The variances seem comparable and the formal test cannot detect a difference
 
 ### Sample size
+
+```{r}
+# Sample size for each treatment group, for the total population and split by gender
+summary(data$treatment)
+summary(data$treatment[data$sex == "male"])
+summary(data$treatment[data$sex == "female"])
+```
+The samples in the total study population are sufficiently large. When split by gender, the groups get somewhat small.
 
 ### Random sample
 
@@ -297,8 +319,6 @@ Ha: The difference in dialostic blood pressure is bigger in the third treatment 
 Ha: mean(third treatment) - mean(placebo) = diff != 0
 
 ```{r}
-data23 <- data[which(data$treatment != "Treatment 1"),]
-data23$treatment <- droplevels(data23$treatment)
 t.test(dbpdif~treatment, data = data23, mu=0, alternative = "greater", conf= 0.95, var.eq=T, paired=F)
 ```
 
@@ -316,15 +336,6 @@ Same conclusion. The diastolic blood pressure decreases significantly more when 
 In this case I think it is best to use Mann-Whitney since we are not sure about the normal distribution.
 
 
-
-Varianties vergelijken
-```{r}
-variances <- with(data23, tapply(dbpdif, treatment, function(x) round( var(x), digits = 2) ) )
-
-#Varianties testen
-print(bartlett.test(dbpdif~treatment,data = data23))
-
-```
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
@@ -548,22 +559,26 @@ leveneTest(dbpdif ~ sex * treatment, data = data23)
 P-value is larger than 0.05 so variances are approximatly equal.
 Both assumptions are met.
 
-TS: I don't think we are allowed to use ANOVA, as this was no part of the Prinstat course. However, I found it very hard to find a suitable alternative in the things we have seen in prinstat. The main problem was that the sample size for the treatment and placebo group are not equal within one gender. This is what I tried, but I'm not very satisfied about it:
+## Question 6 updated: gender difference
+TS: I don't think we are allowed to use ANOVA, as this was no part of the Prinstat course. However, I found it very hard to find a suitable alternative in the things we have seen in prinstat. The main problem was that the sample size for the treatment and placebo group are not equal within one gender. This is what I tried, now updated for the exclusion of some samples:
+```{R}
 data23 <- data[data$treatment != "1",]
 male23 <- data23[data23$sex =="male",]
 female23 <- data23[data23$sex == "female",]
 summary(male23$treatment) #Smallest group (2) has 19 values
-summary(female23$treatment) #Smallest group (3) has 20 values
+summary(female23$treatment) #Smallest group (3) has 19 values
 
-Making a vector with the differences, taking a sample from the largest group for equal group sizes
+# Making a vector with the differences, taking a sample from the largest group for equal group sizes
+set.seed(2018)
 male23_dif <- male23$dbpdif[male23$treatment == 3] - sample(male23$dbpdif[male23$treatment == 2], size = 19)
-female23_dif <- sample(female23$dbpdif[female23$treatment == 3], size = 20) - female23$dbpdif[female23$treatment == 2]
+set.seed(2019)
+female23_dif <- sample(female23$dbpdif[female23$treatment == 3], size = 19) - female23$dbpdif[female23$treatment == 2]
 
-Variances seem comparable
+# Variances seem comparable
 var(male23_dif)
 var(female23_dif)
 
-Formal test for equality of variance
+# Formal test for equality of variance
 md2 <- data.frame(male23_dif, rep("m", 19))
 fd2 <- data.frame(female23_dif, rep("f", 20))
 colnames(md2) <- c("dif", "sex")
@@ -572,18 +587,14 @@ mfd <- rbind(md2, fd2)
 mf23_dif <- c(male23_dif, female23_dif)
 var.test(dif~sex, mfd)
 
-Two-sided T-test
+# Two-sided T-test
 t.test(male23_dif, female23_dif, alternative = "two.sided", paired = FALSE, var.equal =  TRUE)
-
-T-test that does not assume equality of variance generates almost the same result
-t.test(male23_dif, female23_dif, alternative = "two.sided", paired = FALSE, var.equal =  FALSE)
-
-
+```
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
 
 
-## Question 7 (updated version of the project): power of the last question
+## Question 7 updated: power of the last question
 alpha <- 0.025
 delta <- 4
 sigma1 <- var(male23_dif)
@@ -595,7 +606,7 @@ t.alpha <- qt(1-alpha,df = n-2)
 
 lambda <- delta / sqrt(sigma1/n1 + sigma2/n2)
 
-power <- pt(t.alpha, df = n-1, ncp = lambda )
+power <- 1 - pt(t.alpha, df = n-1, ncp = lambda )
 
 
 ------------------------------------------------------------------------------------------
