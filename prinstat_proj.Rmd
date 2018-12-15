@@ -1,4 +1,5 @@
-title: "Randomized blood pressure reduction trial"
+---
+title: "Appendix"
 author: Robin Boudry, Maarten Rahier, Tom Schipper, Laurens Van Paemel
 output:
   word_document:
@@ -7,7 +8,10 @@ output:
     toc_depth: 1
 ---
 
-```{r}
+# Preparation
+## Packages
+
+```{r include=FALSE}
 library(ggplot2)
 library(plyr)
 library(Hmisc)
@@ -19,16 +23,19 @@ library(corrplot)
 library(reshape2)
 library(stats)
 library(car)
-## Stargazer
+library(tableone)
+library(moonBook)
 options(qwraps2_markup = "markdown")
 ```
 
-(RB): dose and compliance with the assigned dose not the same. Would prefer comp
+## Importing and preparing the data
+
 ```{r}
 # Read in data
 data <- read.table("bptrial.txt", header=TRUE, sep=",", dec=".")
 # Set column names
-colnames(data) <- c("treatment", "sex", "weight", "age", "dose", "dbpdif", "dbp3", "dbp2", "dbp1")
+colnames(data) <- c("treatment", "sex", "weight", "age",
+                    "comp", "dbpdif", "dbp3", "dbp2", "dbp1")
 # Add column dbp_end for the 5th measurement at the end of the experiment
 data$dbp_end <- data$dbp3 + data$dbpdif
 # Mean dbp during the run-in period
@@ -36,22 +43,16 @@ data$dbp_mean <- round((data$dbp1 + data$dbp2 + data$dbp3) / 3, 1)
 # Raw data subset without categorical variables as factor
 data_raw <- data
 # Treatment group as factor
-data$treatment <- as.factor(data$treatment)
+data$treatment <- as.factor(mapvalues(data$treatment, from=c(1, 2, 3), to=c("Treatment 1", "Placebo", "Treatment 3")))
 # Gender as factor
-data$sex <- as.factor(mapvalues(data$sex, from=c(0, 1), to=c("female", "male")))
+data$sex <- as.factor(mapvalues(data$sex, from=c(0, 1), to=c("Female", "Male")))
 ```
 
+# 1. Descriptive analysis
 
-------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------
+## Data cleaning
 
-
-# Question 1
-
-# 1 a) 
-1. a) Check for any errors (obviously suspicious observations due to data entry errors, should be corrected if possible). Clarify in your report what mistakes you have detected, and how you detected them. All further questions below should be answered based on the cleaned data.
-
-## Cleaning
+### Data errors
 
 No missing values
 
@@ -67,307 +68,193 @@ No duplicates
 data[duplicated(data),]
 ```
 
-## Dosage
-
-80% adherence cut-off rule
+### Adherence to the treatment
 
 ```{r}
-summary(data$dose)
-# Dose by treatment group
-boxplot(data$dose~data$treatment, data=data, main="Dose by treatment group", xlab="Treatment group", ylab="Dose")
-# Patients who didn't take pills at least 80% of the experimental days
-data <- data[order(data$dose),]
-data_low_dose <- data[data$dose < 0.8,]
-data_low_dose
-# Remove observations of patients who didn't take the prescribed medication for more than 40% of all experiment days.
-data <- data[data$dose >= 0.6,]
-data_raw <- data_raw[data_raw$dose >= 0.6,]
-# Split treatment groups
-treat1 <- data[data$treatment == 1,]
-placebo <- data[data$treatment == 2,]
-treat3 <- data[data$treatment == 3,]
+# Summary statistics
+summary(data$comp)
+# Compliance by treatment group
+boxplot(data$comp~data$treatment, data=data, main="Compliance by treatment group",
+        xlab="Treatment group", ylab="Compliance")
+# Display observations with a compliance below 80 %
+data <- data[order(data$comp),]
+data_low_dose <- data[data$comp < 0.8,]
+print(data_low_dose)
+# Apply 80 % adherence rule: removing observations with insufficient adherence to the treatment
+data <- data[data$comp >= 0.8,]
+data_raw <- data_raw[data_raw$comp >= 0.8,]
 ```
 
-(RB: titles added)
-```{r}
-corrplot.mixed(cor(data_raw %>% select(sex, weight, age, dose, dbp_mean, dbpdif, dbp_end)), lower="number", upper="ellipse", tl.pos="d")
-# By treatment group
-corrplot.mixed(cor(data_raw[data_raw$treatment == 1,] %>% select(sex, weight, age, dose, dbp_mean, dbpdif, dbp_end)), lower="number", upper="ellipse", tl.pos="d",title = '\n Treatment 1')
-corrplot.mixed(cor(data_raw[data_raw$treatment == 2,] %>% select(sex, weight, age, dose, dbp_mean, dbpdif, dbp_end)), lower="number", upper="ellipse", tl.pos="d",title = '\n Treatment 2')
-corrplot.mixed(cor(data_raw[data_raw$treatment == 3,] %>% select(sex, weight, age, dose, dbp_mean, dbpdif, dbp_end)), lower="number", upper="ellipse", tl.pos="d",title = '\n Treatment 3')
-```
-
-Taking a closer look at the correlation between the dosage and weight for the 3rd treatment group and dbp_mean vs dosage for the 1st treatment group.
-
-(RB: had a negative remark on HW3 about using a regression line in the descriptive part. Use when 100% sure)
-(RB: titles & cor# added)
-```{r}
-# Scatterplot with regression line - t3: weight vs dosage
-plot(treat3$weight, treat3$dose, main = paste('Scatterplot with regression line - t3: weight vs dosage,
-correlation is:',round(cor(treat3$weight, treat3$dose),3)))
-     
-abline(lm(treat3$dose~treat3$weight), col="red")
-# Scatterplot with regression line - t1: dbp_mean vs dosage
-plot(treat1$dbp_mean, treat1$dose, main = 'Scatterplot with regression line - t1: dbp_mean vs dosage')
-abline(lm(treat1$dose~treat1$dbp_mean), col="red")
-```
-
-(lvp) Total dosage not always a whole number thus it seems likely that the dose might be influenced by certain factors. If the numbers were all whole the dosage differences would likely have been due to people taking an extra pill or not taking a pill on certain days.
-(RB) 1 pill per day is an assumption? What is the value of *28, prop diff stays same? 
-A proportion *28 gives an enlarged proportion, not necessarily an actual dose
-
-```{r}
-data$total_dose <- data$dose * 28
-data[data$treatment == 1,]$total_dose
-data[data$treatment == 2,]$total_dose
-data[data$treatment == 3,]$total_dose
-```
-
-(lvp) the previous time 0.6 was (intended) to be applied to limit the bias applied to the correlation tests between dosage and other factors. (RB: ok thx)
-
-```{r}
-# Remove observations of patients who didn't take the prescribed treatment at least 80 % of the time
-data <- data[data$dose >= 0.8,]
-# Mention the bias that arises from the removal of observations
-# Split treatment groups
-treat1 <- data[data$treatment == 1,]
-placebo <- data[data$treatment == 2,]
-treat3 <- data[data$treatment == 3,]
-```
-
-
-(TS) 80% is indeed an arbitrary, but commonly used cut-off in clinical trials: "the vast majority of publications still classify patients in a dichotomous fashion based on an 80% adherence cut-off rule derived from pill count", from: https://academic.oup.com/eurheartj/advance-article/doi/10.1093/eurheartj/ehy377/5050879 I think that the cut-off should be chosen on the basis of common clinical practice and should be independend of the adherence observed in our trial, so I don't think we should use an outlier exclusion procedure. Instead, I changed the 0.6 above to 0.8. This excludes 29 patients (compared to 20 for the 60% cut-off).
-(lvp) Weak correlaton between t1 dosage vs dbp_mean and t3 dosage vs weight. Strong enough to consider? If yes, difficult to set a cut-off range.
-
-(RB: thanks for clarifying. Is over-adherence a thing?)
-
-
-## DBP run-in period
-
--> replace extreme observation of 66 by the mean of the other two measures
-(TS): I am not sure if we should do this. This value is indeed an extreme outlier that is strange, but not necessarily impossible. There is also an exremely high observation: one patient (nr. 148 in the original dataset) had a dbp3 value of 130, while dbp1 and dbp2 were 100 and 102. Although some elevation in this period is expected from the study design, this one seems very high and sudden. If we want to adapt the extremely low value, I think we should also adapt this high value or have a very strong argument for not doing so. I think I would actually prefer to leave the values as they are.
-(lvp) The overall mean across the 3 measurements would be 89.33 while the selection criteria applied seems to be 90+. Which adds to the belief that it’s an error. Normally I'd be ok with keeping it and at first I wanted to do that too, but not a single other patient has an average below 90. Thus it seems very odd from different perspectives.
-(RB): Keeping could mean bias. Since the intake criteria was >= 90 I would agree with LVP
+### Selection criteria
 
 ```{r}
 # Diastolic bloodpressure below 90 during one of the measurements during the run-in period
 data[data$dbp1 < 90 | data$dbp2 < 90 | data$dbp3 < 90,]
-```
-
-(RB) 101 is correct but plz make sure it doesnt seem arbitrary
-(lvp) done 
-```{r}
-# Replace extreme observation
-data$dbp3[data$dbp3 == 66] <- (data[data$dbp3 == 66,]$dbp1 + data[data$dbp3 == 66,]$dbp2) / 2
-# Recalc the mean dbp
-data$dbp_mean <- round((data$dbp1 + data$dbp2 + data$dbp3) / 3, 1)
-```
-
-
-```{r}
-# Frequencies of measures
-histogram(data$dbp1)
-histogram(data$dbp2)
-histogram(data$dbp3)
-histogram(round(data$dbp_mean, 0))
+# Remove the outlier of 66 for the 3rd measurement
+data = data[data$dbp3 != 66,]
+# Subsets by treatment group
+treat1 <- data[data$treatment == "Treatment 1",]
+placebo <- data[data$treatment == "Placebo",]
+treat3 <- data[data$treatment == "Treatment 1",]
 ```
 
 ------------------------------------------------------------------------------------------
 
-# 1 b)
-Describe the study population and hence the scope of the evaluation.
+## Study population
 
-The study population consists of people who suffer from hypertension stage 2 (diastolic bloodpressure above 90). No other criteria seem to have been applied (age, weight, gender).
+Based on the Shapiro-Wilk test, weight is normally distributed, the other variables not. Based on the result either the mean or median is chosen to be used in the characteristics of the study population table.
 
 ```{r}
-library(moonBook)
-mytable(treatment~.,data=data)
+# Test the normality of the variables
+shapiro.test(treat1$dbpdif)
+shapiro.test(placebo$dbpdif)
+shapiro.test(treat3$dbpdif)
+
+shapiro.test(data$dbp3)
+shapiro.test(data$dbp2)
+shapiro.test(data$dbp1)
+shapiro.test(data$age)
+shapiro.test(data$weight)
 ```
 
 ```{r}
-library(tableone)
+# Characteristics of the study population table which assumes normality for continuous variables
 CreateTableOne(data=data)
-```
-
-```{r}
+# By treatment group
+mytable(treatment~.,data=data)
 CreateTableOne(vars=c("age", "weight", "dose", "dbp1", "dbp2", "dbp3", "dbp_end", "dbpdif", "sex"), strata="treatment" , data=data, factorVars="")
+
+# Complete descriptives
+describe(data)
+describe.by(data, data$treatment)
 ```
 
-The mean dbp is higher for the placebo group
+## Evaluating assumtpions
+
+### Comparability of the groups
+
+Based on the previously mentioned descriptive statistics the groups are comparable except for the gender distribution.
+
+### Normality
+
+The final DBP measurement and the DBP difference are normally distributed, but the run-in period DBP measurements are not. Due to the limited size of the sample and the difference between the run-in and final DBP measurement, the result cannot be trusted. Age is not normally distributed, but weight is.
 
 ```{r}
-boxplot(data$dbp_mean~data$treatment, data=data, main="DBP by treatment group", xlab="Treatment group", ylab="DBP")
+# Check normality
+qqnorm(treat1$dbpdif);qqline(treat1$dbpdif)
+qqnorm(placebo$dbpdif);qqline(placebo$dbpdif)
+qqnorm(treat3$dbpdif);qqline(treat3$dbpdif)
+
+qqnorm(treat1$dbp_end);qqline(treat1$dbp_end)
+qqnorm(placebo$dbp_end);qqline(placebo$dbp_end)
+qqnorm(treat3$dbp_end);qqline(treat3$dbp_end)
+
+qqnorm(data$dbp3);qqline(data$dbp3)
+qqnorm(data$age);qqline(data$age)
+qqnorm(data$weight);qqline(data$weight)
+
+# Test the normality
+shapiro.test(treat1$dbpdif)
+shapiro.test(placebo$dbpdif)
+shapiro.test(treat3$dbpdif)
+
+shapiro.test(data$dbp3)
+
+shapiro.test(treat1$dbp_end)
+shapiro.test(placebo$dbp_end)
+shapiro.test(treat3$dbp_end)
 ```
 
-# 1 c)
-1. (c) to help evaluate assumptions which facilitate subsequent analyses.
-
-Are the groups comparable?
-They seem to be quite comparable.
-
-Normality?
-DBP is skewed to the right
-Because of the small sample size it's difficult to tell whether dbpdif is normally distributed or not
-
-## Comparable groups?
-(RB: values added)
-```{r}
-# Mean weight by treatment group
-table(data$treatment, data$sex)
-
-# Gender by treatment group
-ggplot(data, aes(treatment, fill=sex)) +
-  geom_bar(position="fill") +
-  scale_y_continuous(labels = scales::percent, name ="Percentage") +
-  ggtitle("Gender balance by treatment group")
-  
-```
-
-```{r}
-# Mean weight by treatment group
-summary(data$weight~data$treatment)
-# Weight by treatment group
-boxplot(data$weight~data$treatment, data=data, main="Weight by treatment group", xlab="Treatment group", ylab="Weight")
-```
+### Independence
 
 ```{r}
-# Mean age by treatment group
-summary(data$age~data$treatment)
-# Age by treatment group
-boxplot(data$age~data$treatment, data=data, main="Age by treatment group", xlab="Treatment group", ylab="Age")
+corrplot.mixed(cor(data_raw %>% select(sex, weight, age, comp, dbp_mean, dbpdif, dbp_end)), lower="number", upper="ellipse", tl.pos="d",title = '\n Correlations between variables for all observations')
+# By treatment group
+corrplot.mixed(cor(data_raw[data_raw$treatment == 1,] %>% select(sex, weight, age, comp, dbp_mean, dbpdif, dbp_end)), lower="number", upper="ellipse", tl.pos="d", title = '\n Correlations between variables for Treatment 1')
+corrplot.mixed(cor(data_raw[data_raw$treatment == 2,] %>% select(sex, weight, age, comp, dbp_mean, dbpdif, dbp_end)), lower="number", upper="ellipse", tl.pos="d", title = '\n Correlations between variables for Placebo')
+corrplot.mixed(cor(data_raw[data_raw$treatment == 3,] %>% select(sex, weight, age, comp, dbp_mean, dbpdif, dbp_end)), lower="number", upper="ellipse", tl.pos="d", title = '\n Correlations between variables for Treatment 3')
 ```
+
+### Outliers
+
+There are outliers for the DBP3 measure. In the 3rd treatment group, the final DBP has outliers as well as for DBP difference. There are no outliers in the placebo group for the final DBP measure nor the DBP difference.
 
 ```{r}
-# Mean run-off DBP by treatment group
-summary(data$dbp_mean~data$treatment)
-# Age by treatment group
-boxplot(data$dbp_mean~data$treatment, data=data, main="DBP mean by treatment group", xlab="Treatment group", ylab="DBP mean")
+# Boxplot to check for outliers
+boxplot(data$dbp3, main="Run-in DBP measure 3", ylab="DBP")
+boxplot(data$dbpdif~data$treatment, main="DBP difference by group", ylab="DBP")
+boxplot(data$dbp_end~data$treatment, main="Final DBP measure by group")
 ```
 
-## Normality?
+### Homogenity of variances
 
-(TS) I think the best way to assess normality is by making QQ-plots:
-Based on these, I would say that dbpdif and weight are normally distributed, while the others are not.
-(lvp) Isn't this mainly of importance for the dbp measures? (in relation to the question: "to help evaluate assumptions which facilitate subsequent analyses")
-(RB: shapiro test added)
+### Sample size
 
-```{r}
-qqnorm(data$dbpdif)
-qqnorm(data$dbp3)
-qqnorm(data$dbp_end)
-qqnorm(data$age)
-qqnorm(data$weight)
+### Random sample
 
-shapiro.test(data$dbpdif) 
-#non normal as opposed to shapiro.test(rnorm(100, mean = 1, sd = 1))
-```
-
-
-```{r}
-describe(data) 
-```
-
-```{r}
-# Histograms of dbpdif per treatment group
-par(mfrow=c(1,3))
-histogram(treat1$dbpdif, breaks=seq(-35,5,5))
-histogram(placebo$dbpdif, breaks=seq(-25,25,5))
-histogram(treat3$dbpdif, breaks=seq(-45,10,5))
-par(mfrow=c(1,1))
-```
-
-## Outliers?
-
-Has already been examined earlier
-
+(no, because we removed ~20% of observations)
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
 
-
-# Question 2
-(RB) please consider making a selection of what we will actually use
-
-(RB) describe has been used just before for all data
-```{r}
-describeBy(data %>% select(dbp_mean, dbp1, dbp2, dbp3, dbp_end, dbpdif), group=data$treatment)
-```
-
-```{r}
-# Custom summary table using dplyr (use this one) - format 1
-summarycols <-
-  list(
-    "Run-in mean DBP" =
-      list(
-        "mean (sd)" = ~ qwraps2::mean_sd(dbp_mean),
-        "min" = ~ min(dbp_mean),
-        "25th" = ~ quantile(dbp_mean, .25),
-        "Median" = ~ median(dbp_mean),
-        "75th" = ~ quantile(dbp_mean, .75),
-        "max" = ~ max(dbp_mean)
-      ),
-    "Final DBP" =
-      list(
-        "mean (sd)" = ~ qwraps2::mean_sd(dbp_end),
-        "min" = ~ min(dbp_end),
-        "25th" = ~ quantile(dbp_end, .25),
-        "Median" = ~ median(dbp_end),
-        "75th" = ~ quantile(dbp_end, .75),
-        "max" = ~ max(dbp_end)
-      ),
-    "DBP change" =
-      list(
-        "mean (sd)" = ~ qwraps2::mean_sd(dbp_mean),
-        "min" = ~ min(dbp_mean),
-        "25th" = ~ quantile(dbp_mean, .25),
-        "Median" = ~ median(dbp_mean),
-        "75th" = ~ quantile(dbp_mean, .75),
-        "max" = ~ max(dbp_mean)
-      )
-  )
-print(summary_table(dplyr::group_by(data, treatment), summarycols),
-      rtitle = "Summary Statistics",
-      cnames = c("Treatment 1", "Placebo", "Treatment 3"))
-```
+# 2. Descriptives for the research question
 
 ```{r}
 # Columns to rows
-data_pop <- melt(data, id.vars='treatment', measure.vars=c('dbp_mean', 'dbp_end', 'dbpdif'))
+data_pop <- melt(data, id.vars='treatment', measure.vars=c('dbp3', 'dbp_end', 'dbpdif'))
 data_pop$ID <- seq.int(nrow(data))
-# Custom summary table using dplyr (use this one) - format 2
+# Custom summary table using dplyr
 summarycols <-
   list(
     "treatment1" =
       list(
-        "mean (sd)" = ~ qwraps2::mean_sd(data_pop[data_pop$treatment == 1 & data_pop$variable == variable,]$value),
-        "min" = ~ min(data_pop[data_pop$treatment == 1 & data_pop$variable == variable,]$value),
-        "25th" = ~ quantile(data_pop[data_pop$treatment == 1 & data_pop$variable == variable,]$value, .25),
-        "Median" = ~ median(data_pop[data_pop$treatment == 1 & data_pop$variable == variable,]$value),
-        "75th" = ~ quantile(data_pop[data_pop$treatment == 1 & data_pop$variable == variable,]$value, .75),
-        "max" = ~ max(data_pop[data_pop$treatment == 1 & data_pop$variable == variable,]$value)
+        "mean (sd)" = ~ qwraps2::mean_sd(data_pop[data_pop$treatment == "Treatment 1" & data_pop$variable == variable,]$value),
+        "min" = ~ min(data_pop[data_pop$treatment == "Treatment 1" & data_pop$variable == variable,]$value),
+        "25th" = ~ quantile(data_pop[data_pop$treatment == "Treatment 1" & data_pop$variable == variable,]$value, .25),
+        "Median" = ~ median(data_pop[data_pop$treatment == "Treatment 1" & data_pop$variable == variable,]$value),
+        "75th" = ~ quantile(data_pop[data_pop$treatment == "Treatment 1" & data_pop$variable == variable,]$value, .75),
+        "max" = ~ max(data_pop[data_pop$treatment == "Treatment 1" & data_pop$variable == variable,]$value)
       ),
     "placebo" =
       list(
-        "mean (sd)" = ~ qwraps2::mean_sd(data_pop[data_pop$treatment == 2 & data_pop$variable == variable,]$value),
-        "min" = ~ min(data_pop[data_pop$treatment == 2 & data_pop$variable == variable,]$value),
-        "25th" = ~ quantile(data_pop[data_pop$treatment == 2 & data_pop$variable == variable,]$value, .25),
-        "Median" = ~ median(data_pop[data_pop$treatment == 2 & data_pop$variable == variable,]$value),
-        "75th" = ~ quantile(data_pop[data_pop$treatment == 2 & data_pop$variable == variable,]$value, .75),
-        "max" = ~ max(data_pop[data_pop$treatment == 2 & data_pop$variable == variable,]$value)
+        "mean (sd)" = ~ qwraps2::mean_sd(data_pop[data_pop$treatment == "Placebo" & data_pop$variable == variable,]$value),
+        "min" = ~ min(data_pop[data_pop$treatment == "Placebo" & data_pop$variable == variable,]$value),
+        "25th" = ~ quantile(data_pop[data_pop$treatment == "Placebo" & data_pop$variable == variable,]$value, .25),
+        "Median" = ~ median(data_pop[data_pop$treatment == "Placebo" & data_pop$variable == variable,]$value),
+        "75th" = ~ quantile(data_pop[data_pop$treatment == "Placebo" & data_pop$variable == variable,]$value, .75),
+        "max" = ~ max(data_pop[data_pop$treatment == "Placebo" & data_pop$variable == variable,]$value)
       ),
     "treatment3" =
       list(
-        "mean (sd)" = ~ qwraps2::mean_sd(data_pop[data_pop$treatment == 3 & data_pop$variable == variable,]$value),
-        "min" = ~ min(data_pop[data_pop$treatment == 3 & data_pop$variable == variable,]$value),
-        "25th" = ~ quantile(data_pop[data_pop$treatment == 3 & data_pop$variable == variable,]$value, .25),
-        "Median" = ~ median(data_pop[data_pop$treatment == 3 & data_pop$variable == variable,]$value),
-        "75th" = ~ quantile(data_pop[data_pop$treatment == 3 & data_pop$variable == variable,]$value, .75),
-        "max" = ~ max(data_pop[data_pop$treatment == 3 & data_pop$variable == variable,]$value)
+        "mean (sd)" = ~ qwraps2::mean_sd(data_pop[data_pop$treatment == "Treatment 3" & data_pop$variable == variable,]$value),
+        "min" = ~ min(data_pop[data_pop$treatment == "Treatment 3" & data_pop$variable == variable,]$value),
+        "25th" = ~ quantile(data_pop[data_pop$treatment == "Treatment 3" & data_pop$variable == variable,]$value, .25),
+        "Median" = ~ median(data_pop[data_pop$treatment == "Treatment 3" & data_pop$variable == variable,]$value),
+        "75th" = ~ quantile(data_pop[data_pop$treatment == "Treatment 3" & data_pop$variable == variable,]$value, .75),
+        "max" = ~ max(data_pop[data_pop$treatment == "Treatment 3" & data_pop$variable == variable,]$value)
       )
   )
 print(summary_table(dplyr::group_by(data_pop, variable), summarycols),
       rtitle = "Summary Statistics",
-      cnames = c("dbp_mean", "dbp_end", "dbpdif"))
+      cnames = c("dbp3", "dbp_end", "dbpdif"))
+```
+
+Conclusion q2: At first glance we can see that the groups had a similar bp at intake visits, but the treatment groups(1,3)
+had a lower bp than before at the final visit. The control group(2) remained more or less stable throughout the study. 
+We can see this as a first indication that the treatment groups did achieve a lower bp.
+
+```{r}
+# Boxplot: difference between treatment groups
+par(mfrow=c(1,3), mar=c(2.5, 2, 2, 1)) 
+plot(data$treatment, data$dbp3,
+     ylim=c(70, 130))
+title('DBP at visit 3')
+plot(data$treatment, data$dbp_end,
+     ylim=c(70, 130))
+title('Final DBP')
+plot(data$treatment, data$dbpdif)
+title('DBP difference')
+par(mfrow=c(1,1)) 
 ```
 
 ```{r}
@@ -375,128 +262,33 @@ print(summary_table(dplyr::group_by(data_pop, variable), summarycols),
 ggplot(data, aes(x=dbp_end)) +
   geom_histogram() +
   facet_grid(~treatment) +
-  stat_bin(binwidth=5)
-```
-
-```{r}
-# Columns to rows
-data_res <- melt(data, id.vars='treatment', measure.vars=c('dbp_mean','dbp_end'))
-data_res$ID <- seq.int(nrow(data))
-# Boxplots of placebo and treatment3 before and after the experiment
-ggplot(data_res[data_res$treatment != 1,], aes(x=treatment, y=value, fill=variable)) +
-  geom_boxplot()
+  stat_bin(binwidth=5) +
+  ggtitle("Final DBP measeurement frequencies by treatment group") +
+  labs(x="DBP")
 ```
 
 Checking the consistency of the decrease in dbp measurements for the 3rd treatment group: not all measures follow the trend
 
 ```{r}
-# Profile plot
-ggplot(data_res[data_res$treatment == 3,], aes(x=variable, y=value, group=ID)) +
-  geom_point() +
-  geom_line()
-```
-
-(TS) I would use the dbp3 or the mean of dbp2 and dpb3, but not the mean of dbp 1-3. dbp1 is measured at the moment that previous medication is disontinued, so it is influenced by the previous medication. 
-(lvp) In the exploration no difference was seen between dbp1-3. I haven't done a signifiance test but I very highly doubt it would be. For example profile plot below. The mean should thus give a more reliable base measure. dbpdif compared between mean and dbp5 likely would also be more consistent.
-
-```{r}
 # Columns to rows
-data_res <- melt(data, id.vars='treatment', measure.vars=c('dbp1','dbp2','dbp3'))
+data_res <- melt(data, id.vars='treatment', measure.vars=c('dbp3','dbp_end'))
 data_res$ID <- seq.int(nrow(data))
 # Profile plot
-ggplot(data_res, aes(x=variable, y=value, group=ID)) +
+ggplot(data_res[data_res$treatment == "Treatment 3",], aes(x=variable, y=value, group=ID)) +
   geom_point() +
-  geom_line()
+  geom_line() +
+  ggtitle("DBP evolution before and after the experiment for the 3rd treatment group") +
+  labs(y="DBP")
 ```
 
-I would also make a more stringent selection of the values that we want to represent, because mean, sd, min, Q2, median, Q3 and max for every variable is really a lot. If we select certain values, we can show that we have considered which values are important for the reader and which values fit the data. My selection would be to represent the median and IQR for dbp3 and dbp_end, as these are not normally distributed, and mean and sd for dbpdif, as it is normally distributed. My (primitive) table would look like this:
-(lvp) Would suggest using the table as in the word doc. This one matches the ones typically shown in scientific articles.
-
-```{r}
-table_dbp3 <- with(data, tapply(dbp3, treatment, function(x) 
-  paste0(round(mean(x)), " (", IQR(x), ")")))
-table_dbp_end <- with(data, tapply(dbp_end, treatment, function(x) 
-  paste0(round(mean(x)), " (", IQR(x), ")")))
-table_dbpdif <- with(data, tapply(dbpdif, treatment, function(x) paste(round(mean(x)), "±", round(sd(x)))))
-table_all <- noquote ( t( rbind(table_dbp3, table_dbp_end, table_dbpdif)))
-rownames(table_all) <- c("Traetment 1", "Placebo", "Treatment 3")
-colnames(table_all) <- c("dbp3 - median (IQR)", "dbp5 - median (IQR)", "dpbdif - mean ± sd")
-table_all
-```
-
-(RB) ## Question 2: descriptive analysis of the research question
-Initial conclusion after
-```{r}
-#Research question: difference between treatment groups
-#look at treatment groups
-#final difference
-#control around 0, other dropped by 10 median in final condition
-#at start1, we can see at visit 1, little to no difference 
-#upper range for control is somewhat larger  
-summary(data)
-#graph 
-par(mfrow=c(1,4)) 
-plot(data$treatment, data$dbp1,
-     ylim=c(70, 130))  # we can see at visit 1, little to no difference
-title('Dbp at Visit 1') 
-plot(data$treatment, data$dbp2,
-     ylim=c(70, 130)) #same trend visit 2
-title('Dbp at Visit 2')
-plot(data$treatment, data$dbp3,
-     ylim=c(70, 130)) #same trend visit 3
-title('Dbp at Visit 3')
-plot(data$treatment, data$dbp_end,
-     ylim=c(70, 130)) #same trend visit 3
-title('Dbp at Visit 5')
-par(mfrow=c(1,1)) 
-```
-Conclusion q2: At first glance we can see that the groups had a similar bp at intake visits, but the treatment groups(1,3)
-had a lower bp than before at the final visit. The control group(2) remained more or less stable throughout the study. 
-We can see this as a first indication that the treatment groups did achieve a lower bp.
-
-TS: Dit is wat ik gedaan had voor Q2 (waarschijnlijk veel overlap, maar voor de volledigheid):
-
--Data inlezen en aanpassen
-```{r}
-data <- read.csv("C:/Data/PhD/Statistiek/Project/bptrial.txt")
-data$dbp5 <- data$dbp3 + data$dbpdif
-data$trt <- as.factor(as.character(data$trt))
-data$sex <- as.factor(as.character(data$sex))
-colnames(data) <- c("treatment", "sex", "weight", "age", "active_dose", "dbpdif", "dbp3", "dbp2", "dbp1","dbp5")
-levels(data$treatment) <- c("Treatment 1", "Placebo", "Treatment 3")
-
--Boxplot van de resultaten in de verschillende behandelingsgroepen maken
-
-boxplot(data$dbpdif~data$treatment, data=data, main="Differences in diastolic blood pressure", xlab= "Treatment group",
-        ylab="Blood pressure difference (mmHg)")
-```
-
--Tabel van gemiddelden en standaardeviaties van de verschillende groepen maken (ook voor de geslachten apart)
-```{r}
-table_total <- with(data, tapply(dbpdif, treatment, function(x) paste(round(mean(x)), "±", round(sd(x)))))
-table_male <- with(data[which(data$sex == 1),], tapply(dbpdif, treatment, function(x) 
-  paste(round(mean(x)), "±", round(sd(x)))))
-table_female <- with(data[which(data$sex == 0),], tapply(dbpdif, treatment, function(x) 
-  paste(round(mean(x)), "±", round(sd(x)))))
-table_all <- noquote (rbind(table_total, table_male, table_female))
-rownames(table_all) <- c("Total", "Male", "Female")
-write.table(noquote(table_all), "table.txt", quote = FALSE, sep = ",", row.names = TRUE, col.names = NA)
-```
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
 
 
-# Question 3
+# Formal primary analysis
 
 ## Parametric
-
-TS In this question and question 4 we test two-sided, but in question 5 we test one-sided. The questions do not explicitly say that treatment 3 should have a greater difference, so we can test two-sided. On the other hand, the purpose of this experiment is to find a treatment that causes a greater reduction then the placebo, which implies one sided testing. I think that both can be used if supported by good arguments, but we must make sure that we use the same in question 3, 4 and 5.
-My preference would be to test one-sided. As the questions are "suggesting natural steps", I think we do not have to take them literally, but can choose what we think fits the research question best. What do you think?
-(lvp) Looking at the boxplot earlier it suggests that the treatment 3 group has a lower final dbp, thus raising the question: is the dbp significantly lower compared to the placebo? "There is a significant difference" doesn't really help us out with the question of whether the treatment is an improvement or not -> thus I'm also in the 1-way camp.
-
-(RB) 1. is dbp lower '1-sided'. 2. is there a male/female dif '2-sided'
-
 
 Welch Two Sample t-test
 H0: The difference in diastolic blood pressure is equal in both the third treatment group and the placebo group.
@@ -505,12 +297,10 @@ Ha: The difference in dialostic blood pressure is bigger in the third treatment 
 Ha: mean(third treatment) - mean(placebo) = diff != 0
 
 ```{r}
-mean(placebo$dbpdif)
-mean(treat3$dbpdif)
-boxplot(treat3$dbpdif,placebo$dbpdif)
 t.test(treat3$dbpdif, placebo$dbpdif, mu=0, alternative = "two.sided", conf= 0.95, var.eq=F, paired=F)
 ```
-Difference when treament 3 is used is bigger. The diastolic blood pressure decreases significantly more when using Treament 3.
+
+The difference between DBP measures is greater for treatment 3. The diastolic blood pressure decreases significantly more when using Treament 3.
 Assumptions: 
 scale of measurement, random sampling, normality of data distribution, adequacy of sample size -> Scale is not that large, not sure about normal distribution of both populations
 
@@ -529,10 +319,6 @@ Nieuw object maken dat enkel data van groepen 2 en 3 bevat
 ```{r}
 data23 <- data[which(data$treatment != "Treatment 1"),]
 data23$treatment <- droplevels(data23$treatment)
-
-#QQ-plot maken
-qqnorm(data23$dbpdif)
-qqline(data23$dbpdif)
 ```
 
 Varianties vergelijken
@@ -560,23 +346,22 @@ Power of the T-test for gender difference of >=4mmHg in the treatment effect
 Here 2 sample T, comparing 2 group means to each other
 ```{r}
 #male group
-male <- data23[data23$sex == 'male',]
+male <- data23[data23$sex == 'Male',]
 #female group
-female <- data23[data23$sex == 'female',]
+female <- data23[data23$sex == 'Female',]
 #get variables mean, sd, n,
-num1 <- length(male[male$treatment==3,]$dbp_end)
-num2 <- length(female[female$treatment==3,]$dbp_end)
-m1 <- mean(male[male$treatment==3,]$dbp_end)
-m2 <- mean(female[female$treatment==3,]$dbp_end)
-var1 <- var(male[male$treatment==3,]$dbp_end)
-var2 <- var(female[female$treatment==3,]$dbp_end)
-sd1 <- sd(male[male$treatment==3,]$dbp_end)
-sd2 <- sd(female[female$treatment==3,]$dbp_end)
+num1 <- length(male[male$treatment=="Treatment 3",]$dbp_end)
+num2 <- length(female[female$treatment=="Treatment 3",]$dbp_end)
+m1 <- mean(male[male$treatment=="Treatment 3",]$dbp_end)
+m2 <- mean(female[female$treatment=="Treatment 3",]$dbp_end)
+var1 <- var(male[male$treatment=="Treatment 3",]$dbp_end)
+var2 <- var(female[female$treatment=="Treatment 3",]$dbp_end)
+sd1 <- sd(male[male$treatment=="Treatment 3",]$dbp_end)
+sd2 <- sd(female[female$treatment=="Treatment 3",]$dbp_end)
 se <- sqrt(sd1*sd1/num1+sd2*sd2/num2)
 
-
 #equal var: yes
-var.test(dbp_end~sex, data23[data23$treatment==3,])
+var.test(dbp_end~sex, data23[data23$treatment=="Treatment 3",])
 
 #equal var, use pooled sd
 n <- c(num1,num2)
@@ -628,7 +413,7 @@ Use appropriate 5% sign level & conclude, how and why do treatment arms differ?
 How does this comparison differ from the one above?
 
 ## parametric
-```{r}
+```{r eval=FALSE, include=FALSE}
 #make binary variable
 data23$binary <- 0
 data23$binary[data23$dbpdif<10]<-1
@@ -639,33 +424,33 @@ binPl <-data23[data23$treatment == 'Placebo',]$binary
 ##RB: Good remark
 
 #using a t-test
-# print(t.test(binary~treatment, 
-#              data = data23, 
-#              alternative = "less")
-#              )#since Placebo comes first in data23, x1 less x2
-# #function for calculatin the Z-statistic of 2 binary variables
-# #with x=succes(1) and n=total(number 0 & 1's)
-# z.prop = function(x1,x2,n1,n2){
-#   numerator = (x1/n1) - (x2/n2)
-#   p.common = (x1+x2) / (n1+n2)
-#   denominator = sqrt(p.common * (1-p.common) * (1/n1 + 1/n2))
-#   z.prop.ris = numerator / denominator
-#   return(z.prop.ris)
-# }
-# binTr <-data23[data23$treatment == 'Treatment 3',]$binary
-# binPl <-data23[data23$treatment == 'Placebo',]$binary
-# pasTr <- sum(binTr)
-# pasPl <- sum(binPl)
-# nTr <- length(passTr) 
-# nPl <- length(passPl)
-# z.prop(pasTr, pasPl, nTr, nPl)      #optional
+print(t.test(binary~treatment, 
+            data = data23, 
+            alternative = "less")
+            )#since Placebo comes first in data23, x1 less x2
+#function for calculatin the Z-statistic of 2 binary variables
+#with x=succes(1) and n=total(number 0 & 1's)
+z.prop = function(x1,x2,n1,n2){
+ numerator = (x1/n1) - (x2/n2)
+ p.common = (x1+x2) / (n1+n2)
+ denominator = sqrt(p.common * (1-p.common) * (1/n1 + 1/n2))
+ z.prop.ris = numerator / denominator
+ return(z.prop.ris)
+}
+binTr <-data23[data23$treatment == 'Treatment 3',]$binary
+binPl <-data23[data23$treatment == 'Placebo',]$binary
+pasTr <- sum(binTr)
+pasPl <- sum(binPl)
+nTr <- length(passTr) 
+nPl <- length(passPl)
+z.prop(pasTr, pasPl, nTr, nPl)      #optional
 ```
 
 
 #non-parametric
 use of prop.test from base R
 H0: proportions in the groups are the same
-```{r}
+```{r eval=FALSE, include=FALSE}
 prop.test(c(pasTr,pasPl),
           c(nTr,nPl),
           alternative = 'greater' #has treatment 3 greater prop of 1's? (data23$dbpdif<10]<-1)
@@ -719,7 +504,7 @@ Same conclusion: H0 is not rejected, mean is not different from zero. No placebo
 ------------------------------------------------------------------------------------------
 
 
-## Question 7 
+# Question 7 
 
 Does the mean difference in dbpdif between group 3 and group 2 depend on gender? Derive a justified answer.
 2-way anova to see a possible interaction between treat and gender.
@@ -820,3 +605,58 @@ t.alpha <- qt(1-alpha,df = n-2)
 lambda <- delta / sqrt(sigma1/n1 + sigma2/n2)
 
 power <- pt(t.alpha, df = n-1, ncp = lambda )
+
+
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+
+# Other explorations
+
+Summary table alternative version
+```{r}
+# Alternative custom summary table using dplyr
+summarycols <-
+  list(
+    "Run-in mean DBP" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(dbp_mean),
+        "min" = ~ min(dbp_mean),
+        "25th" = ~ quantile(dbp_mean, .25),
+        "Median" = ~ median(dbp_mean),
+        "75th" = ~ quantile(dbp_mean, .75),
+        "max" = ~ max(dbp_mean)
+      ),
+    "Final DBP" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(dbp_end),
+        "min" = ~ min(dbp_end),
+        "25th" = ~ quantile(dbp_end, .25),
+        "Median" = ~ median(dbp_end),
+        "75th" = ~ quantile(dbp_end, .75),
+        "max" = ~ max(dbp_end)
+      ),
+    "DBP change" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(dbp_mean),
+        "min" = ~ min(dbp_mean),
+        "25th" = ~ quantile(dbp_mean, .25),
+        "Median" = ~ median(dbp_mean),
+        "75th" = ~ quantile(dbp_mean, .75),
+        "max" = ~ max(dbp_mean)
+      )
+  )
+print(summary_table(dplyr::group_by(data, treatment), summarycols),
+      rtitle = "Summary Statistics",
+      cnames = c("Treatment 1", "Placebo", "Treatment 3"))
+```
+
+Change between the run-in period DBP measurements
+```{r}
+# Columns to rows
+data_res <- melt(data, id.vars='treatment', measure.vars=c('dbp1','dbp2','dbp3'))
+data_res$ID <- seq.int(nrow(data))
+# Profile plot
+ggplot(data_res, aes(x=variable, y=value, group=ID)) +
+  geom_point() +
+  geom_line()
+```
