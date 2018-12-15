@@ -7,8 +7,10 @@ output:
     toc: yes
     toc_depth: 1
 ---
-
+###############################
 # Preparation
+###############################
+
 ## Packages
 
 ```{r include=FALSE}
@@ -47,8 +49,9 @@ data$treatment <- as.factor(mapvalues(data$treatment, from=c(1, 2, 3), to=c("Tre
 # Gender as factor
 data$sex <- as.factor(mapvalues(data$sex, from=c(0, 1), to=c("Female", "Male")))
 ```
-
+###############################
 # 1. Descriptive analysis
+###############################
 
 ## Data cleaning
 
@@ -67,7 +70,6 @@ No duplicates
 # Check for duplicate rows
 data[duplicated(data),]
 ```
-
 ### Adherence to the treatment
 
 ```{r}
@@ -218,8 +220,9 @@ The samples in the total study population are sufficiently large. When split by 
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
-
+###############################
 # 2. Descriptives for the research question
+###############################
 
 ```{r}
 # Columns to rows
@@ -306,7 +309,9 @@ ggplot(data_res[data_res$treatment == "Treatment 3",], aes(x=variable, y=value, 
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
-
+###############################
+# Question 3
+###############################
 
 # Formal primary analysis
 
@@ -340,8 +345,10 @@ In this case I think it is best to use Mann-Whitney since we are not sure about 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
 
-
+###############################
 # Question 4
+###############################
+
 ## Parametric
 T-test
 Power of the T-test for gender difference of >=4mmHg in the treatment effect
@@ -407,9 +414,9 @@ The power decreases severely to 0.515 using this non parametric test
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
 
-
-
+###############################
 # Question5
+###############################
 Binary indicator of whether (dbp5-dbp3)<10mmHg between the 2 treatment arms.
 Use appropriate 5% sign level & conclude, how and why do treatment arms differ?
 How does this comparison differ from the one above?
@@ -466,9 +473,9 @@ The treatments were compared here on a cut-off value of {dbp5-dbp3)<10mmHg}. Ins
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
-
-
+###############################
 # Question 6
+###############################
 
 expected evolution in blood pressure between visit 5 en 3 in the placebo group.
 
@@ -504,9 +511,9 @@ Same conclusion: H0 is not rejected, mean is not different from zero. No placebo
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
-
-
+###############################
 # Question 7 
+###############################
 
 Does the mean difference in dbpdif between group 3 and group 2 depend on gender? Derive a justified answer.
 2-way anova to see a possible interaction between treat and gender.
@@ -559,8 +566,11 @@ leveneTest(dbpdif ~ sex * treatment, data = data23)
 P-value is larger than 0.05 so variances are approximatly equal.
 Both assumptions are met.
 
+###############################
 ## Question 6 updated: gender difference
+###############################
 TS: I don't think we are allowed to use ANOVA, as this was no part of the Prinstat course. However, I found it very hard to find a suitable alternative in the things we have seen in prinstat. The main problem was that the sample size for the treatment and placebo group are not equal within one gender. This is what I tried, now updated for the exclusion of some samples:
+RB: Practicum IV p26 uses aov as well.
 ```{R}
 data23 <- data[data$treatment != "1",]
 male23 <- data23[data23$sex =="male",]
@@ -592,9 +602,10 @@ t.test(male23_dif, female23_dif, alternative = "two.sided", paired = FALSE, var.
 ```
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
-
-
+###############################
 ## Question 7 updated: power of the last question
+###############################
+
 alpha <- 0.025
 delta <- 4
 sigma1 <- var(male23_dif)
@@ -611,8 +622,9 @@ power <- 1 - pt(t.alpha, df = n-1, ncp = lambda )
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
-
+###############################
 # Other explorations
+###############################
 
 Summary table alternative version
 ```{r}
