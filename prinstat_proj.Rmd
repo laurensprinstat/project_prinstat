@@ -341,10 +341,9 @@ Binary indicator of whether (dbp5-dbp3)<10mmHg between the 2 treatment arms.
 Use appropriate 5% sign level & conclude, how and why do treatment arms differ?
 How does this comparison differ from the one above?
 
+
 The actual succes rate can be seen as a proportion.
 To test the proportion difference, we can calcualte the Z-value based on the 2 proportions
-
-
 ```{r}
 data23$binary <- 0
 data23$binary[data23$dbpdif<10]<-1
@@ -411,6 +410,34 @@ z
 
 ```
 Here we also see a rejection of the H0, but stronger. A z-value of 3.52 relates to a confidence level of 99.98%, whereas in the first case a 1.76 Z-score relates to a 96.08% confidence level.
+
+
+The best procedure would be to generate a simulation.
+Note that from the 80 observations, only 6 did not meet the (dbp5-dbp3)<10mmHg mark.
+Therefore only 7 possible differences are to be noted. This is by far a smooth distribution and should not be seen as an exact measure.
+```{r}
+'Using a simulation'
+x<-data23$binary
+y<-c(1:length(data23$binary)) 
+allresp <- data.frame(x,y)    #create df with indexes for sampling
+
+size <- nrow(allresp)/2 #original size is 80, divide in even groups
+
+diff<- vector()
+for(i in 1:10000){
+            a <- allresp[sample(nrow(allresp),40),] #sample 40 randoms
+          propa <- sum(a[,1])/size  #calc prop 1
+          b <- setdiff(allresp, a)  #get all values not in a
+          propb <- sum(b[,1])/size  #calc prop 2
+          diff[i] <- c(propa-propb)   
+}
+
+hist(diff)
+
+#observed difference
+sum(c(p_1-p_2)>diff)/length(diff)
+```
+Although the chance that our observed difference is higher than a random difference is, because of the oneven distribution this should be seen as a raw estimate, not a precise measure.
 
 
 Extra base R tests, for reference
