@@ -353,8 +353,8 @@ binTr <-data23[data23$treatment == 'Treatment 3',]$binary
 binPl <-data23[data23$treatment == 'Placebo',]$binary
 pasTr <- sum(binTr)
 pasPl <- sum(binPl)
-nTr <- length(passTr) 
-nPl <- length(passPl)
+nTr <- length(pasTr) 
+nPl <- length(pasPl)
 
 n_1 <- length(binTr)
 n_2 <- length(binPl)
