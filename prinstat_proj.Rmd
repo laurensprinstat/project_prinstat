@@ -343,7 +343,8 @@ How does this comparison differ from the one above?
 
 
 The actual succes rate can be seen as a proportion.
-To test the proportion difference, we can calcualte the Z-value based on the 2 proportions
+To test the proportion difference, we can calcualte the Z-value based on the 2 proportions.
+However, since the sample sizes do not allow us to assume normality, a sampling method will also be used after.
 ```{r}
 data23$binary <- 0
 data23$binary[data23$dbpdif<10]<-1
