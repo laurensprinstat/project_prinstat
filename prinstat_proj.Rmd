@@ -612,7 +612,47 @@ lambda <- delta / (std_dev * (sqrt(1/n + 1/n)))
 # power function to confirm the outcome
 power.t.test(n = 19, delta = 4, sd = std_dev, sig.level = alpha, type = "two.sample", alternative = "two.sided")
 ```
+###############################
+## Question 7B: power of the ANOVA-test
+###############################
+```{R}
+# Finding the mean of each gender-treatment combination in the real dataset
+mu2f <- mean(data23$dbpdif[data23$treatment == "2" & data23$sex == "female"])
+mu3f <- mean(data23$dbpdif[data23$treatment == "3" & data23$sex == "female"])
+mu2m <- mean(data23$dbpdif[data23$treatment == "2" & data23$sex == "male"])
+mu3m <- mean(data23$dbpdif[data23$treatment == "3" & data23$sex == "male"])
 
+# Finding the sd of each gender-treatment combination in the real dataset
+sd2f <- sd(data23$dbpdif[data23$treatment == "2" & data23$sex == "female"])
+sd3f <- sd(data23$dbpdif[data23$treatment == "3" & data23$sex == "female"])
+sd2m <- sd(data23$dbpdif[data23$treatment == "2" & data23$sex == "male"])
+sd3m <- sd(data23$dbpdif[data23$treatment == "3" & data23$sex == "male"])
+
+# Simulation study to find the power of the ANOVA-interaction test
+power_data <- vector(,1000)
+set.seed(2018)
+for(i in 1:1000) {
+  sim2f <- rnorm(19, mean = mu2f, sd = sd2f)
+  sim3f <- rnorm(20, mean = mu3f - 2, sd = sd3f) # mean decreased by 2 for females
+  sim2m <- rnorm(22, mean = mu2m, sd = sd2m)
+  sim3m <- rnorm(19, mean = mu3m + 2, sd = sd3m) # mean increased by 2 for males
+  # Males and females now differ 4 mmHg in treatment effect on average
+  
+  #Creating a dataframe from the simulated values
+  dbpdif <- c(sim2f, sim3f, sim2m, sim3m)
+  genders <- c(rep("female", 39), rep("male", 41))
+  treatments <- c(rep("placebo", 19), rep("treatment3", 20), rep("placebo", 22), rep("treatment3", 19))
+  sim_data <- data.frame (data.frame(dbpdif, genders), treatments)
+  
+  #Calculating the significance of the interaction in the simulated data
+  sim_model1 <- lm(dbpdif ~ genders * treatments, data = sim_data)
+  aov_result <- anova(sim_model1)
+  x <- aov_result$`Pr(>F)`[[3]]
+  power_data[i] <- x
+}
+mean(power_data < 0.05)
+```
+The test has a power of 70%
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
 ###############################
