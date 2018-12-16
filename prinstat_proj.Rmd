@@ -334,78 +334,8 @@ In this case I think it is best to use Mann-Whitney since we are not sure about 
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
-
 ###############################
-# Question 4
-###############################
-
-## Parametric
-T-test
-Power of the T-test for gender difference of >=4mmHg in the treatment effect
-Here 2 sample T, comparing 2 group means to each other
-```{r}
-#male group
-male <- data23[data23$sex == 'Male',]
-#female group
-female <- data23[data23$sex == 'Female',]
-#get variables mean, sd, n,
-num1 <- length(male[male$treatment=="Treatment 3",]$dbp_end)
-num2 <- length(female[female$treatment=="Treatment 3",]$dbp_end)
-m1 <- mean(male[male$treatment=="Treatment 3",]$dbp_end)
-m2 <- mean(female[female$treatment=="Treatment 3",]$dbp_end)
-var1 <- var(male[male$treatment=="Treatment 3",]$dbp_end)
-var2 <- var(female[female$treatment=="Treatment 3",]$dbp_end)
-sd1 <- sd(male[male$treatment=="Treatment 3",]$dbp_end)
-sd2 <- sd(female[female$treatment=="Treatment 3",]$dbp_end)
-se <- sqrt(sd1*sd1/num1+sd2*sd2/num2)
-
-#equal var: yes
-var.test(dbp_end~sex, data23[data23$treatment=="Treatment 3",])
-
-#equal var, use pooled sd
-n <- c(num1,num2)
-mean <- c(m1,m2)
-sd <- c(sd1,sd2)
-df <- data.frame(n,mean,sd)
-
-pooled_sd <- sqrt( sum(df$sd^2 * (df$n - 1)) / (sum(df$n - 1)) )
-
-#use of standard function
-power.t.test(n= n, #size
-             delta = 4, #effect size
-             sd = pooled_sd, 
-             sig.level = 0.95,
-             type= "two.sample", #male & female
-             alternative = 'two.sided' #detect a difference
-             )
-
-#compute by hand, not achieving same result
-
-```
-The power to detect a difference of 4hhMg at the 0.05 sign level between male and female using the T-test 
-
-
-## Non-parametric
-Power here has to be calculated as a proportion, since we can not use the normal distribution to make inferences
-Do the wilcox test for 1000 samples of random generated data with length, mean and sd as the male and female group to compare. See proportion of p-values smaller than 0.05
-```{r}
-pval <- replicate(1000, 
-                  wilcox.test(rnorm(num1,m1,sd1), #male
-                              rnorm(num2,m2,sd2), #female
-                              mu=4,alt="two.sided", correct= TRUE, 
-                              paired = FALSE, conf.int = TRUE, 
-                              exact =FALSE)$p.value)      #mean difference to be detected
-summary(pval) 
-sum(pval < .05)/1000
-```
-The power decreases severely to 0.515 using this non parametric test
-
-
-------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------
-
-###############################
-# Question5
+# Question4
 ###############################
 Binary indicator of whether (dbp5-dbp3)<10mmHg between the 2 treatment arms.
 Use appropriate 5% sign level & conclude, how and why do treatment arms differ?
@@ -445,11 +375,12 @@ z
 
 #source: https://onlinecourses.science.psu.edu/stat414/node/268/
 ```
-We can reject the 0 hypotheses of the proprtions of being under the cut-off being equal at the 95% confidence level.
+We can reject the 0 hypotheses of the proportions of being under the cut-off being equal at the 95% confidence level.
 The treatments were compared here on a cut-off value of {dbp5-dbp3)<10mmHg}. Instead of comparing the natural group means, we created a yes or no indicator according to our set benchmark. The strength of this test will rely hugely on how well the cut-off value is chosen, and can not be seen as a complete representation of the difference between the groups. Only the difference in relation to the cut-off can be evalueted here.
 
 
-Since the cutoff defined as (dbp5-dbp3)<10mmHg seemed rather wide to us, we decided to also check if (dbp5-dbp3)< -10mmHg,thereby looking for if the Treatment group beats the placebo group with at least 10mmHg.
+Since the cutoff defined as (dbp5-dbp3)<10mmHg seemed rather wide to us, we decided to also check if (dbp5-dbp3)< -10mmHg,thereby looking if the Treatment group beats the placebo group with at least 10mmHg.
+
 ```{r}
 data23$binaryrev <- 0
 data23$binaryrev[data23$dbpdif<(-10)]<-1
@@ -479,12 +410,13 @@ qnorm(0.95, 0, 1)<z
 z
 
 ```
-Here we also see a rejection of the H0, but much stronger. A z-value of 3.52 relates to a confidence level of 99.98%, whereas in the first case a 1.76 Z-score relates to a 96.08% confidence level.
+Here we also see a rejection of the H0, but stronger. A z-value of 3.52 relates to a confidence level of 99.98%, whereas in the first case a 1.76 Z-score relates to a 96.08% confidence level.
 
 
 Extra base R tests, for reference
 ```{r eval=FALSE, include=FALSE}
-#z.prop(pasTr, pasPl, nTr, nPl)      #optional
+#optiona
+#z.prop(pasTr, pasPl, nTr, nPl)      
 
 #Using base R
 #prop.test(c(pasTr,pasPl),
@@ -498,7 +430,7 @@ Extra base R tests, for reference
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
 ###############################
-# Question 6
+# Question 5
 ###############################
 
 expected evolution in blood pressure between visit 5 en 3 in the placebo group.
@@ -536,7 +468,43 @@ Same conclusion: H0 is not rejected, mean is not different from zero. No placebo
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
 ###############################
-# Question 7 
+## Question 6 updated: gender difference
+###############################
+TS: I don't think we are allowed to use ANOVA, as this was no part of the Prinstat course. However, I found it very hard to find a suitable alternative in the things we have seen in prinstat. The main problem was that the sample size for the treatment and placebo group are not equal within one gender. This is what I tried, now updated for the exclusion of some samples:
+RB: Practicum IV p26 uses aov as well.
+```{R}
+data23 <- data[data$treatment != "1",]
+male23 <- data23[data23$sex =="male",]
+female23 <- data23[data23$sex == "female",]
+summary(male23$treatment) #Smallest group (2) has 19 values
+summary(female23$treatment) #Smallest group (3) has 19 values
+
+# Making a vector with the differences, taking a sample from the largest group for equal group sizes
+set.seed(2018)
+male23_dif <- male23$dbpdif[male23$treatment == 3] - sample(male23$dbpdif[male23$treatment == 2], size = 19)
+set.seed(2019)
+female23_dif <- sample(female23$dbpdif[female23$treatment == 3], size = 19) - female23$dbpdif[female23$treatment == 2]
+
+# Variances seem comparable
+var(male23_dif)
+var(female23_dif)
+
+# Formal test for equality of variance
+md2 <- data.frame(male23_dif, rep("m", 19))
+fd2 <- data.frame(female23_dif, rep("f", 20))
+colnames(md2) <- c("dif", "sex")
+colnames(fd2) <- c("dif", "sex")
+mfd <- rbind(md2, fd2)
+mf23_dif <- c(male23_dif, female23_dif)
+var.test(dif~sex, mfd)
+
+# Two-sided T-test
+t.test(male23_dif, female23_dif, alternative = "two.sided", paired = FALSE, var.equal =  TRUE)
+```
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+###############################
+# Question 6B 
 ###############################
 
 Does the mean difference in dbpdif between group 3 and group 2 depend on gender? Derive a justified answer.
@@ -590,42 +558,6 @@ leveneTest(dbpdif ~ sex * treatment, data = data23)
 P-value is larger than 0.05 so variances are approximatly equal.
 Both assumptions are met.
 
-###############################
-## Question 6 updated: gender difference
-###############################
-TS: I don't think we are allowed to use ANOVA, as this was no part of the Prinstat course. However, I found it very hard to find a suitable alternative in the things we have seen in prinstat. The main problem was that the sample size for the treatment and placebo group are not equal within one gender. This is what I tried, now updated for the exclusion of some samples:
-RB: Practicum IV p26 uses aov as well.
-```{R}
-data23 <- data[data$treatment != "1",]
-male23 <- data23[data23$sex =="male",]
-female23 <- data23[data23$sex == "female",]
-summary(male23$treatment) #Smallest group (2) has 19 values
-summary(female23$treatment) #Smallest group (3) has 19 values
-
-# Making a vector with the differences, taking a sample from the largest group for equal group sizes
-set.seed(2018)
-male23_dif <- male23$dbpdif[male23$treatment == 3] - sample(male23$dbpdif[male23$treatment == 2], size = 19)
-set.seed(2019)
-female23_dif <- sample(female23$dbpdif[female23$treatment == 3], size = 19) - female23$dbpdif[female23$treatment == 2]
-
-# Variances seem comparable
-var(male23_dif)
-var(female23_dif)
-
-# Formal test for equality of variance
-md2 <- data.frame(male23_dif, rep("m", 19))
-fd2 <- data.frame(female23_dif, rep("f", 20))
-colnames(md2) <- c("dif", "sex")
-colnames(fd2) <- c("dif", "sex")
-mfd <- rbind(md2, fd2)
-mf23_dif <- c(male23_dif, female23_dif)
-var.test(dif~sex, mfd)
-
-# Two-sided T-test
-t.test(male23_dif, female23_dif, alternative = "two.sided", paired = FALSE, var.equal =  TRUE)
-```
-------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------
 ###############################
 ## Question 7 updated: power of the last question
 ###############################
