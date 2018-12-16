@@ -513,18 +513,19 @@ male23_dif <- male23$dbpdif[male23$treatment == 3] - sample(male23$dbpdif[male23
 set.seed(2019)
 female23_dif <- sample(female23$dbpdif[female23$treatment == 3], size = 19) - female23$dbpdif[female23$treatment == 2]
 
+# The data seem normally distributed
+gender_dif <- c(male23_dif, female23_dif)
+qqnorm(gender_dif)
+
+# Formal test for normality
+shapiro.test(gender_dif)
+
 # Variances seem comparable
 var(male23_dif)
 var(female23_dif)
 
 # Formal test for equality of variance
-md2 <- data.frame(male23_dif, rep("m", 19))
-fd2 <- data.frame(female23_dif, rep("f", 20))
-colnames(md2) <- c("dif", "sex")
-colnames(fd2) <- c("dif", "sex")
-mfd <- rbind(md2, fd2)
-mf23_dif <- c(male23_dif, female23_dif)
-var.test(dif~sex, mfd)
+var.test(male23_dif, female23_dif)
 
 # Two-sided T-test
 t.test(male23_dif, female23_dif, alternative = "two.sided", paired = FALSE, var.equal =  TRUE)
@@ -589,20 +590,25 @@ Both assumptions are met.
 ###############################
 ## Question 7 updated: power of the last question
 ###############################
-
-alpha <- 0.025
+```{R}
+n = 19 # Number of observations in each group
+N = 38 # Total number of observations
+alpha <- 0.05
 delta <- 4
-sigma1 <- var(male23_dif)
-sigma2 <- var(female23_dif)
-n1 <- length(male23_dif)
-n2 <- length(female23_dif)
-n <- n1 + n2
-t.alpha <- qt(1-alpha,df = n-2)
+std_dev <- sd(gender_dif) # Single sd as variances are comparable
 
-lambda <- delta / sqrt(sigma1/n1 + sigma2/n2)
+# Cut-off for two-sided test
+t.alpha <- qt(1-alpha/2,df = N-2)
 
-power <- 1 - pt(t.alpha, df = n-1, ncp = lambda )
+# Non-centrality parameter
+lambda <- delta / (std_dev * (sqrt(1/n + 1/n)))
 
+# Power calculation
+1 - pt(t.alpha, df = N-2, ncp = lambda )
+
+# power function to confirm the outcome
+power.t.test(n = 19, delta = 4, sd = std_dev, sig.level = alpha, type = "two.sample", alternative = "two.sided")
+```
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
