@@ -411,55 +411,89 @@ Binary indicator of whether (dbp5-dbp3)<10mmHg between the 2 treatment arms.
 Use appropriate 5% sign level & conclude, how and why do treatment arms differ?
 How does this comparison differ from the one above?
 
-## parametric
-```{r eval=FALSE, include=FALSE}
-#make binary variable
+The actual succes rate can be seen as a proportion.
+To test the proportion difference, we can calcualte the Z-value based on the 2 proportions
+
+
+```{r}
 data23$binary <- 0
 data23$binary[data23$dbpdif<10]<-1
-binTr <-data23[data23$treatment == 'Treatment 3',]$binary
-binPl <-data23[data23$treatment == 'Placebo',]$binary
 
-##TS: I don't think that a T-test is suitable, as binary data are not (by definition, I think) normally distributed
-##RB: Good remark
-
-#using a t-test
-print(t.test(binary~treatment, 
-            data = data23, 
-            alternative = "less")
-            )#since Placebo comes first in data23, x1 less x2
-#function for calculatin the Z-statistic of 2 binary variables
-#with x=succes(1) and n=total(number 0 & 1's)
-z.prop = function(x1,x2,n1,n2){
- numerator = (x1/n1) - (x2/n2)
- p.common = (x1+x2) / (n1+n2)
- denominator = sqrt(p.common * (1-p.common) * (1/n1 + 1/n2))
- z.prop.ris = numerator / denominator
- return(z.prop.ris)
-}
 binTr <-data23[data23$treatment == 'Treatment 3',]$binary
 binPl <-data23[data23$treatment == 'Placebo',]$binary
 pasTr <- sum(binTr)
 pasPl <- sum(binPl)
 nTr <- length(passTr) 
 nPl <- length(passPl)
-z.prop(pasTr, pasPl, nTr, nPl)      #optional
+
+n_1 <- length(binTr)
+n_2 <- length(binPl)
+p_1 <- sum(binTr)/n_1
+p_2 <- sum(binPl)/n_2
+
+#P -> the proportion of total passes
+p<-(n_1*p_1+n_2*p_2)/(n_1+n_2)
+
+#Z-score
+z<-(p_1- p_2)/
+  sqrt(p*(1- p)*(1/n_1+1/n_2))
+
+#Get the required z-value of chosen significance level
+#1 sided testing, the probability of the trial group passing(P_1) is greater than that of the placebo group (P_2)
+qnorm(0.95, 0, 1)<z
+z
+
+#source: https://onlinecourses.science.psu.edu/stat414/node/268/
 ```
-
-
-#non-parametric
-use of prop.test from base R
-H0: proportions in the groups are the same
-```{r eval=FALSE, include=FALSE}
-prop.test(c(pasTr,pasPl),
-          c(nTr,nPl),
-          alternative = 'greater' #has treatment 3 greater prop of 1's? (data23$dbpdif<10]<-1)
-          )
-#qchisq(0.9, 1)
-```
-We see that at the 0.05 accuracy rate we can't reject H0, but at the 0.06 rate we can. Although not overwhelming, we have some indication of Treatment 3 group measures being more below the 10 mmGh limit than placebo measures with this non-parametric test.
-
+We can reject the 0 hypotheses of the proprtions of being under the cut-off being equal at the 95% confidence level.
 The treatments were compared here on a cut-off value of {dbp5-dbp3)<10mmHg}. Instead of comparing the natural group means, we created a yes or no indicator according to our set benchmark. The strength of this test will rely hugely on how well the cut-off value is chosen, and can not be seen as a complete representation of the difference between the groups. Only the difference in relation to the cut-off can be evalueted here.
 
+
+Since the cutoff defined as (dbp5-dbp3)<10mmHg seemed rather wide to us, we decided to also check if (dbp5-dbp3)< -10mmHg,thereby looking for if the Treatment group beats the placebo group with at least 10mmHg.
+```{r}
+data23$binaryrev <- 0
+data23$binaryrev[data23$dbpdif<(-10)]<-1
+
+binTr <-data23[data23$treatment == 'Treatment 3',]$binaryrev
+binPl <-data23[data23$treatment == 'Placebo',]$binaryrev
+pasTr <- sum(binTr)
+pasPl <- sum(binPl)
+nTr <- length(passTr) 
+nPl <- length(passPl)
+
+n_1 <- length(binTr)
+n_2 <- length(binPl)
+p_1 <- sum(binTr)/n_1
+p_2 <- sum(binPl)/n_2
+
+#P -> the proportion of total passes
+p<-(n_1*p_1+n_2*p_2)/(n_1+n_2)
+
+#Z-score
+z<-(p_1- p_2)/
+  sqrt(p*(1- p)*(1/n_1+1/n_2))
+
+#Get the required z-value of chosen significance level
+#1 sided testing, the probability of the trial group passing(P_1) is greater than that of the placebo group (P_2)
+qnorm(0.95, 0, 1)<z
+z
+
+```
+Here we also see a rejection of the H0, but much stronger. A z-value of 3.52 relates to a confidence level of 99.98%, whereas in the first case a 1.76 Z-score relates to a 96.08% confidence level.
+
+
+Extra base R tests, for reference
+```{r eval=FALSE, include=FALSE}
+#z.prop(pasTr, pasPl, nTr, nPl)      #optional
+
+#Using base R
+#prop.test(c(pasTr,pasPl),
+          c(nTr,nPl),
+          alternative = 'greater' #has treatment 3 greater prop of 1's? (data23$dbpdif<10]<-1) 
+          )
+#prop test uses a X-squared test
+#'We see using a base R test using the X-square test that at the 0.05 accuracy rate we cant reject H0, but at the 0.06 rate we can. Although not overwhelming, we have some indication of Treatment 3 group measures being more below the 10 mmGh limit than placebo measures with this non-parametric test.'
+```
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
