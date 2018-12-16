@@ -344,76 +344,37 @@ How does this comparison differ from the one above?
 
 The actual succes rate can be seen as a proportion.
 To test the proportion difference, we can calcualte the Z-value based on the 2 proportions.
-However, since the sample sizes do not allow us to assume normality, a sampling method will also be used after.
+
+!However, since the sample sizes do not allow us to assume normality (we observe only 2 proportions), a sampling method is more appropriate
 ```{r}
 data23$binary <- 0
 data23$binary[data23$dbpdif<10]<-1
-
 binTr <-data23[data23$treatment == 'Treatment 3',]$binary
 binPl <-data23[data23$treatment == 'Placebo',]$binary
 pasTr <- sum(binTr)
 pasPl <- sum(binPl)
 nTr <- length(pasTr) 
 nPl <- length(pasPl)
-
 n_1 <- length(binTr)
 n_2 <- length(binPl)
 p_1 <- sum(binTr)/n_1
 p_2 <- sum(binPl)/n_2
-
 #P -> the proportion of total passes
 p<-(n_1*p_1+n_2*p_2)/(n_1+n_2)
-
 #Z-score
 z<-(p_1- p_2)/
   sqrt(p*(1- p)*(1/n_1+1/n_2))
-
 #Get the required z-value of chosen significance level
 #1 sided testing, the probability of the trial group passing(P_1) is greater than that of the placebo group (P_2)
 qnorm(0.95, 0, 1)<z
 z
 #power for this statistic
 1- pnorm(z, 0, 1)
-
 #source: https://onlinecourses.science.psu.edu/stat414/node/268/
 ```
 We can reject the 0 hypotheses of the proportions of being under the cut-off being equal at the 95% confidence level.
 The treatments were compared here on a cut-off value of {dbp5-dbp3)<10mmHg}. Instead of comparing the natural group means, we created a yes or no indicator according to our set benchmark. The strength of this test will rely hugely on how well the cut-off value is chosen, and can not be seen as a complete representation of the difference between the groups. Only the difference in relation to the cut-off can be evalueted here.
 
-
-Since the cutoff defined as (dbp5-dbp3)<10mmHg seemed rather wide to us, we decided to also check if (dbp5-dbp3)< -10mmHg,thereby looking if the Treatment group beats the placebo group with at least 10mmHg.
-
-```{r}
-data23$binaryrev <- 0
-data23$binaryrev[data23$dbpdif<(-10)]<-1
-
-binTr <-data23[data23$treatment == 'Treatment 3',]$binaryrev
-binPl <-data23[data23$treatment == 'Placebo',]$binaryrev
-pasTr <- sum(binTr)
-pasPl <- sum(binPl)
-nTr <- length(passTr) 
-nPl <- length(passPl)
-
-n_1 <- length(binTr)
-n_2 <- length(binPl)
-p_1 <- sum(binTr)/n_1
-p_2 <- sum(binPl)/n_2
-
-#P -> the proportion of total passes
-p<-(n_1*p_1+n_2*p_2)/(n_1+n_2)
-
-#Z-score
-z<-(p_1- p_2)/
-  sqrt(p*(1- p)*(1/n_1+1/n_2))
-
-#Get the required z-value of chosen significance level
-#1 sided testing, the probability of the trial group passing(P_1) is greater than that of the placebo group (P_2)
-qnorm(0.95, 0, 1)<z
-1- pnorm(z, 0, 1)
-z
-
-```
-Here we also see a rejection of the H0, but stronger. A z-value of 3.52 relates to a confidence level of 99.98%, whereas in the first case a 1.76 Z-score relates to a 96.08% confidence level.
 
 
 The best procedure would be to generate a simulation.
@@ -422,33 +383,82 @@ Therefore only 7 possible differences are to be noted. This is by far a smooth d
 ```{r}
 'Using a simulation'
 x<-data23$binary
-y<-c(1:length(data23$binary)) 
+y<-c(as.numeric(1:length(data23$binary))) 
 allresp <- data.frame(x,y)    #create df with indexes for sampling
-
 size <- nrow(allresp)/2 #original size is 80, divide in even groups
-
 diff<- vector()
 for(i in 1:10000){
             a <- allresp[sample(nrow(allresp),40),] #sample 40 randoms
           propa <- sum(a[,1])/size  #calc prop 1
-          b <- setdiff(allresp, a)  #get all values not in a
+          #b <- setdiff(allresp, a)  stopped working ??
+          b <- allresp[!(allresp$y%in%unique(a$y)),] #get all values not in a
           propb <- sum(b[,1])/size  #calc prop 2
           diff[i] <- c(propa-propb)   
 }
-
 hist(diff)
-
-#observed difference
-sum(c(p_1-p_2)>diff)/length(diff)
+#observed difference likeliness, p-value
+1-sum(c(p_1-p_2)>diff)/length(diff)
 ```
 Although the chance that our observed difference is higher than a random difference is, because of the oneven distribution this should be seen as a raw estimate, not a precise measure.
+
+
+
+Since the cutoff defined as (dbp5-dbp3)<10mmHg seemed rather wide to us, we decided to also check if (dbp5-dbp3)< -10mmHg,thereby looking if the Treatment group beats the placebo group with at least 10mmHg.
+```{r}
+data23$binaryrev <- 0
+data23$binaryrev[data23$dbpdif<(-10)]<-1
+binTr <-data23[data23$treatment == 'Treatment 3',]$binaryrev
+binPl <-data23[data23$treatment == 'Placebo',]$binaryrev
+pasTr <- sum(binTr)
+pasPl <- sum(binPl)
+nTr <- length(passTr) 
+nPl <- length(passPl)
+n_1 <- length(binTr)
+n_2 <- length(binPl)
+p_1 <- sum(binTr)/n_1
+p_2 <- sum(binPl)/n_2
+#P -> the proportion of total passes
+p<-(n_1*p_1+n_2*p_2)/(n_1+n_2)
+#Z-score
+z<-(p_1- p_2)/
+  sqrt(p*(1- p)*(1/n_1+1/n_2))
+#Get the required z-value of chosen significance level
+#1 sided testing, the probability of the trial group passing(P_1) is greater than that of the placebo group (P_2)
+qnorm(0.95, 0, 1)<z
+1- pnorm(z, 0, 1)
+z
+```
+Here we also see a rejection of the H0, but stronger. A z-value of 3.52 relates to a confidence level of 99.98%, whereas in the first case a 1.76 Z-score relates to a 96.08% confidence level.
+
+
+```{r}
+'Using a simulation'
+x<-data23$binaryrev
+y<-c(as.numeric(1:length(data23$binaryrev))) 
+allresp <- data.frame(x,y)    #create df with indexes for sampling
+size <- nrow(allresp)/2 #original size is 80, divide in even groups
+diff<- vector()
+for(i in 1:10000){
+            a <- allresp[sample(nrow(allresp),40),] #sample 40 randoms
+          propa <- sum(a[,1])/size  #calc prop 1
+          #b <- setdiff(allresp, a)  stopped working ??
+          b <- allresp[!(allresp$y%in%unique(a$y)),] #get all values not in a
+          propb <- sum(b[,1])/size  #calc prop 2
+          diff[i] <- c(propa-propb)   
+}
+hist(diff)
+#observed difference likeliness: p-value
+1-sum(c(p_1-p_2)>diff)/length(diff)
+
+sum(data23$binaryrev)
+```
+
 
 
 Extra base R tests, for reference
 ```{r eval=FALSE, include=FALSE}
 #optiona
 #z.prop(pasTr, pasPl, nTr, nPl)      
-
 #Using base R
 #prop.test(c(pasTr,pasPl),
           c(nTr,nPl),
