@@ -575,7 +575,7 @@ str(treat3)
 
 ```{r}
 #Nieuw object maken dat enkel data van groepen 2 en 3 bevat
-data23 <- data[which(data$treatment != "1"),]
+data23 <- data[which(data$treatment != "Treatment 1"),]
 data23$treatment <- droplevels(data23$treatment)
 data23$treatment <- as.factor(data23$treatment)
 ```
