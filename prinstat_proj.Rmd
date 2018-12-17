@@ -35,6 +35,7 @@ options(qwraps2_markup = "markdown")
 ```{r}
 # Read in data
 data <- read.table("bptrial.txt", header=TRUE, sep=",", dec=".")
+original <- data
 # Set column names
 colnames(data) <- c("treatment", "sex", "weight", "age",
                     "comp", "dbpdif", "dbp3", "dbp2", "dbp1")
@@ -42,7 +43,7 @@ colnames(data) <- c("treatment", "sex", "weight", "age",
 data$dbp_end <- data$dbp3 + data$dbpdif
 # Mean dbp during the run-in period
 data$dbp_mean <- round((data$dbp1 + data$dbp2 + data$dbp3) / 3, 1)
-# Raw data subset without categorical variables as factor
+# Raw data subset
 data_raw <- data
 # Treatment group as factor
 data$treatment <- as.factor(mapvalues(data$treatment, from=c(1, 2, 3), to=c("Treatment 1", "Placebo", "Treatment 3")))
@@ -131,6 +132,20 @@ describe(data)
 describe.by(data, data$treatment)
 ```
 
+```{r}
+# Amount of removed observations
+one <- nrow(original[original$trt==1,]) - nrow(data[data$treatment=="Treatment 1",])
+two <- nrow(original[original$trt==2,]) - nrow(data[data$treatment=="Placebo",])
+three <- nrow(original[original$trt==3,]) - nrow(data[data$treatment=="Treatment 3",])
+one
+two
+three
+one / nrow(original[original$trt==1,])
+two / nrow(original[original$trt==2,])
+three / nrow(original[original$trt==3,])
+(nrow(original) - nrow(data)) / nrow(original)
+```
+
 ## Evaluating assumtpions
 
 ### Comparability of the groups
@@ -143,21 +158,25 @@ The final DBP measurement and the DBP difference are normally distributed, but t
 
 ```{r}
 # Check normality
-qqnorm(treat1$dbpdif);qqline(treat1$dbpdif)
-qqnorm(placebo$dbpdif);qqline(placebo$dbpdif)
-qqnorm(treat3$dbpdif);qqline(treat3$dbpdif)
+qqnorm(treat1$dbpdif, main="DBP difference treatment group 1");qqline(treat1$dbpdif)
+qqnorm(placebo$dbpdif, main="DBP difference placebo");qqline(placebo$dbpdif)
+qqnorm(treat3$dbpdif, main="DBP difference treatment group 3");qqline(treat3$dbpdif)
 
-qqnorm(treat1$dbp_end);qqline(treat1$dbp_end)
-qqnorm(placebo$dbp_end);qqline(placebo$dbp_end)
-qqnorm(treat3$dbp_end);qqline(treat3$dbp_end)
+qqnorm(treat1$dbp_end, main="Final DBP treatment group 1");qqline(treat1$dbp_end)
+qqnorm(placebo$dbp_end, main="Final DBP placebo");qqline(placebo$dbp_end)
+qqnorm(treat3$dbp_end, main="Final DBP treatment group 3");qqline(treat3$dbp_end)
 
-qqnorm(data$dbp3);qqline(data$dbp3)
-qqnorm(data$age);qqline(data$age)
-qqnorm(data$weight);qqline(data$weight)
+qqnorm(data$dbp3, main="3rd DBP measure");qqline(data$dbp3)
+qqnorm(data$age, main="Age");qqline(data$age)
+qqnorm(data$weight, main="Weight");qqline(data$weight)
 
 ```
 
 ### Independence
+
+The observations are independent from one another.
+
+Examining relations between variables:
 
 ```{r}
 corrplot.mixed(cor(data_raw %>% select(sex, weight, age, comp, dbp_mean, dbpdif, dbp_end)), lower="number", upper="ellipse", tl.pos="d",title = '\n Correlations between variables for all observations')
@@ -199,14 +218,10 @@ The variances seem comparable and the formal test cannot detect a difference
 ```{r}
 # Sample size for each treatment group, for the total population and split by gender
 summary(data$treatment)
-summary(data$treatment[data$sex == "male"])
-summary(data$treatment[data$sex == "female"])
+summary(data$treatment[data$sex == "Male"])
+summary(data$treatment[data$sex == "Female"])
 ```
 The samples in the total study population are sufficiently large. When split by gender, the groups get somewhat small.
-
-### Random sample
-
-(no, because we removed ~20% of observations)
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
@@ -254,15 +269,14 @@ print(summary_table(dplyr::group_by(data_pop, variable), summarycols),
       cnames = c("dbp3", "dbp_end", "dbpdif"))
 ```
 
-Conclusion q2: At first glance we can see that the groups had a similar bp at intake visits, but the treatment groups(1,3)
+At first glance we can see that the groups had a similar bp at intake visits, but the treatment groups(1,3)
 had a lower bp than before at the final visit. The control group(2) remained more or less stable throughout the study. 
 We can see this as a first indication that the treatment groups did achieve a lower bp.
 
 ```{r}
 # Boxplot: difference between treatment groups
 par(mfrow=c(1,3), mar=c(2.5, 2, 2, 1)) 
-plot(data$treatment, data$dbp3,
-     ylim=c(70, 130))
+plot(data$treatment, data$dbp3, ylim=c(70, 130), levels=c("Treatment 1", "Placebo", "Treatment 3"))
 title('DBP at visit 3')
 plot(data$treatment, data$dbp_end,
      ylim=c(70, 130))
@@ -300,10 +314,8 @@ ggplot(data_res[data_res$treatment == "Treatment 3",], aes(x=variable, y=value, 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
 ###############################
-# Question 3
+# 3. Formal primary analysis
 ###############################
-
-# Formal primary analysis
 
 ## Parametric
 
@@ -335,7 +347,7 @@ In this case I think it is best to use Mann-Whitney since we are not sure about 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
 ###############################
-# Question4
+# 4. Binary indicator
 ###############################
 Binary indicator of whether (dbp5-dbp3)<10mmHg between the 2 treatment arms.
 Use appropriate 5% sign level & conclude, how and why do treatment arms differ?
@@ -471,15 +483,10 @@ Extra base R tests, for reference
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
 ###############################
-# Question 5
+# 5. Continuous outcome measure
 ###############################
 
 expected evolution in blood pressure between visit 5 en 3 in the placebo group.
-
-```{r}
-mean(placebo$dbpdif)
-hist(placebo$dbpdif)
-```
 
 Test if mean for Placebo group is different from 0. 
 H0: mean difference for placebo group is equal to 0
@@ -509,8 +516,9 @@ Same conclusion: H0 is not rejected, mean is not different from zero. No placebo
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
 ###############################
-## Question 6 updated: gender difference
+# 6a. gender difference
 ###############################
+
 TS: I don't think we are allowed to use ANOVA, as this was no part of the Prinstat course. However, I found it very hard to find a suitable alternative in the things we have seen in prinstat. The main problem was that the sample size for the treatment and placebo group are not equal within one gender. This is what I tried, now updated for the exclusion of some samples:
 RB: Practicum IV p26 uses aov as well.
 ```{R}
@@ -543,10 +551,11 @@ var.test(male23_dif, female23_dif)
 # Two-sided T-test
 t.test(male23_dif, female23_dif, alternative = "two.sided", paired = FALSE, var.equal =  TRUE)
 ```
+
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
 ###############################
-# Question 6B 
+# 6b.
 ###############################
 
 Does the mean difference in dbpdif between group 3 and group 2 depend on gender? Derive a justified answer.
@@ -601,7 +610,7 @@ P-value is larger than 0.05 so variances are approximatly equal.
 Both assumptions are met.
 
 ###############################
-## Question 7 updated: power of the last question
+# 7a. Power of the gender difference
 ###############################
 ```{R}
 n = 19 # Number of observations in each group
@@ -623,7 +632,7 @@ lambda <- delta / (std_dev * (sqrt(1/n + 1/n)))
 power.t.test(n = 19, delta = 4, sd = std_dev, sig.level = alpha, type = "two.sample", alternative = "two.sided")
 ```
 ###############################
-## Question 7B: power of the ANOVA-test
+# 7b. 
 ###############################
 ```{R}
 # Finding the mean of each gender-treatment combination in the real dataset
