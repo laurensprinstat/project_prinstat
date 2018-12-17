@@ -515,55 +515,9 @@ Same conclusion: H0 is not rejected, mean is not different from zero. No placebo
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
+
 ###############################
-# 6a. gender difference via T-tests
-###############################
-
-TS: I don't think we are allowed to use ANOVA, as this was no part of the Prinstat course. However, I found it very hard to find a suitable alternative in the things we have seen in prinstat. The main problem was that the sample size for the treatment and placebo group are not equal within one gender. This is what I tried, now updated for the exclusion of some samples:
-RB: Practicum IV p26 uses aov as well.
-```{R}
-data23 <- data[data$treatment != "1",]
-male23 <- data23[data23$sex =="male",]
-female23 <- data23[data23$sex == "female",]
-summary(male23$treatment) #Smallest group (2) has 19 values
-summary(female23$treatment) #Smallest group (3) has 19 values
-
-# First performing the data manipulation once to check whether the assumptions for a T-test are met
-# Making a vector with the differences, taking a sample from the largest group for equal group sizes
-set.seed(2018)
-male23_dif <- male23$dbpdif[male23$treatment == 3] - sample(male23$dbpdif[male23$treatment == 2], size = 19)
-set.seed(2019)
-female23_dif <- sample(female23$dbpdif[female23$treatment == 3], size = 19) - female23$dbpdif[female23$treatment == 2]
-
-# The data seem normally distributed
-gender_dif <- c(male23_dif, female23_dif)
-qqnorm(gender_dif)
-
-# Formal test for normality
-shapiro.test(gender_dif)
-
-# Variances seem comparable
-var(male23_dif)
-var(female23_dif)
-
-# Formal test for equality of variance
-var.test(male23_dif, female23_dif)
-
-## TS: nog mee bezig
-# Then performing the test 10000 times via simulation to compensate for biases in sampling
-T_tests <- vector (,10000)
-for (i in 1:10000) {
-male23_dif <- male23$dbpdif[male23$treatment == 3] - sample(male23$dbpdif[male23$treatment == 2], size = 19)
-female23_dif <- sample(female23$dbpdif[female23$treatment == 3], size = 19) - female23$dbpdif[female23$treatment == 2]
-
-
-t.test(male23_dif, female23_dif, alternative = "two.sided", paired = FALSE, var.equal =  TRUE)
-```
-
-------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------
-###############################
-# 6b. Gender difference via ANOVA
+# 6 Gender difference
 ###############################
 
 Does the mean difference in dbpdif between group 3 and group 2 depend on gender? Derive a justified answer.
@@ -618,45 +572,23 @@ P-value is larger than 0.05 so variances are approximatly equal.
 Both assumptions are met.
 
 ###############################
-# 7a. Power of the gender difference T-tests
-###############################
-```{R}
-n = 19 # Number of observations in each group
-N = 38 # Total number of observations
-alpha <- 0.05
-delta <- 4
-std_dev <- sd(gender_dif) # Single sd as variances are comparable
-
-# Cut-off for two-sided test
-t.alpha <- qt(1-alpha/2,df = N-2)
-
-# Non-centrality parameter
-lambda <- delta / (std_dev * (sqrt(1/n + 1/n)))
-
-# Power calculation
-1 - pt(t.alpha, df = N-2, ncp = lambda )
-
-# power function to confirm the outcome
-power.t.test(n = 19, delta = 4, sd = std_dev, sig.level = alpha, type = "two.sample", alternative = "two.sided")
-```
-###############################
-# 7b. Power of the gender difference ANOVA
+# 7 Power of the gender difference test
 ###############################
 ```{R}
 # Finding the mean of each gender-treatment combination in the real dataset
-mu2f <- mean(data23$dbpdif[data23$treatment == "2" & data23$sex == "female"])
-mu3f <- mean(data23$dbpdif[data23$treatment == "3" & data23$sex == "female"])
-mu2m <- mean(data23$dbpdif[data23$treatment == "2" & data23$sex == "male"])
-mu3m <- mean(data23$dbpdif[data23$treatment == "3" & data23$sex == "male"])
+mu2f <- mean(data23$dbpdif[data23$treatment == "Placebo" & data23$sex == "Female"])
+mu3f <- mean(data23$dbpdif[data23$treatment == "Treatment 3" & data23$sex == "Female"])
+mu2m <- mean(data23$dbpdif[data23$treatment == "Placebo" & data23$sex == "Male"])
+mu3m <- mean(data23$dbpdif[data23$treatment == "Treatment 3" & data23$sex == "Male"])
 
 mu2_sim <- (mu2f + mu2m)/2
 mu3_sim <- (mu3f + mu3m)/2
 
 # Finding the sd of each gender-treatment combination in the real dataset
-sd2f <- sd(data23$dbpdif[data23$treatment == "2" & data23$sex == "female"])
-sd3f <- sd(data23$dbpdif[data23$treatment == "3" & data23$sex == "female"])
-sd2m <- sd(data23$dbpdif[data23$treatment == "2" & data23$sex == "male"])
-sd3m <- sd(data23$dbpdif[data23$treatment == "3" & data23$sex == "male"])
+sd2f <- sd(data23$dbpdif[data23$treatment == "Placebo" & data23$sex == "Female"])
+sd3f <- sd(data23$dbpdif[data23$treatment == "Treatment 3" & data23$sex == "Female"])
+sd2m <- sd(data23$dbpdif[data23$treatment == "Placebo" & data23$sex == "Male"])
+sd3m <- sd(data23$dbpdif[data23$treatment == "Treatment 3" & data23$sex == "Male"])
 
 # Simulation study to find the power of the ANOVA-interaction test
 power_data <- vector(,10000)
@@ -670,8 +602,8 @@ for(i in 1:10000) {
   
   #Creating a dataframe from the simulated values
   dbpdif <- c(sim2f, sim3f, sim2m, sim3m)
-  genders <- c(rep("female", 39), rep("male", 41))
-  treatments <- c(rep("placebo", 19), rep("treatment3", 20), rep("placebo", 22), rep("treatment3", 19))
+  genders <- as.factor(c(rep("Female", 39), rep("Male", 41)))
+  treatments <- as.factor(c(rep("placebo", 19), rep("treatment3", 20), rep("placebo", 22), rep("treatment3", 19)))
   sim_data <- data.frame (data.frame(dbpdif, genders), treatments)
   
   #Calculating the significance of the interaction in the simulated data
