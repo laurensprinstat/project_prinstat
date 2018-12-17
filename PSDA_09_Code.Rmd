@@ -1,0 +1,683 @@
+---
+title: "Appendix"
+author: Robin Boudry, Maarten Rahier, Tom Schipper, Laurens Van Paemel
+output:
+  word_document:
+    highlight: "tango"
+    toc: yes
+    toc_depth: 1
+---
+
+###############################
+# Preparation
+###############################
+
+## Packages
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+library(ggplot2)
+library(plyr)
+library(Hmisc)
+library(psych)
+library(dplyr)
+library(expss)
+library(qwraps2)
+library(corrplot)
+library(reshape2)
+library(stats)
+library(car)
+library(tableone)
+library(moonBook)
+options(qwraps2_markup = "markdown")
+```
+
+## Importing and preparing the data
+
+```{r results='hide'}
+# Read in data
+data <- read.table("bptrial.txt", header=TRUE, sep=",", dec=".")
+original <- data
+# Set column names
+colnames(data) <- c("treatment", "sex", "weight", "age",
+                    "comp", "dbpdif", "dbp3", "dbp2", "dbp1")
+# Add column dbp_end for the 5th measurement at the end of the experiment
+data$dbp_end <- data$dbp3 + data$dbpdif
+# Mean dbp during the run-in period
+data$dbp_mean <- round((data$dbp1 + data$dbp2 + data$dbp3) / 3, 1)
+# Raw data subset
+data_raw <- data
+# Treatment group as factor
+data$treatment <- as.factor(mapvalues(data$treatment, from=c(1, 2, 3),
+                            to=c("Treatment 1", "Placebo", "Treatment 3")))
+# Gender as factor
+data$sex <- as.factor(mapvalues(data$sex, from=c(0, 1),
+                                to=c("Female", "Male")))
+```
+###############################
+# 1. Descriptive analysis
+###############################
+
+## Data cleaning
+
+### Data errors
+
+No missing values
+
+```{r results='hide'}
+# Missing value count
+colSums(is.na(data))
+```
+
+No duplicates
+
+```{r results='hide'}
+# Check for duplicate rows
+data[duplicated(data),]
+```
+### Adherence to the treatment
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+# Summary statistics
+summary(data$comp)
+# Compliance by treatment group
+boxplot(data$comp~data$treatment, data=data,
+        main="Compliance by treatment group",
+        xlab="Treatment group", ylab="Compliance")
+# Display observations with a compliance below 80 %
+data <- data[order(data$comp),]
+data_low_dose <- data[data$comp < 0.8,]
+print(data_low_dose)
+# Apply 80 % adherence rule
+data <- data[data$comp >= 0.8,]
+data_raw <- data_raw[data_raw$comp >= 0.8,]
+```
+
+### Selection criteria
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+# Diastolic bloodpressure below 90 for a run-in period measure
+data[data$dbp1 < 90 | data$dbp2 < 90 | data$dbp3 < 90,]
+# Remove the outlier of 66 for the 3rd measurement
+data = data[data$dbp3 != 66,]
+# Subsets by treatment group
+treat1 <- data[data$treatment == "Treatment 1",]
+placebo <- data[data$treatment == "Placebo",]
+treat3 <- data[data$treatment == "Treatment 1",]
+```
+
+------------------------------------------------------------------------------------------
+
+## Study population
+
+Based on the Shapiro-Wilk test, weight is normally distributed, the other variables not. Based on the result either the mean or median is chosen to be used in the characteristics of the study population table.
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+# Test the normality of the variables
+shapiro.test(treat1$dbpdif)
+shapiro.test(placebo$dbpdif)
+shapiro.test(treat3$dbpdif)
+
+shapiro.test(data$dbp3)
+shapiro.test(data$dbp2)
+shapiro.test(data$dbp1)
+shapiro.test(data$age)
+shapiro.test(data$weight)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+# Characteristics of the study population table (assuming normality)
+CreateTableOne(data=data)
+# By treatment group
+mytable(treatment~.,data=data)
+CreateTableOne(vars=c("age", "weight", "dose", "dbp1", "dbp2",
+                      "dbp3", "dbp_end", "dbpdif", "sex"),
+               strata="treatment", data=data, factorVars="")
+
+# Complete descriptives
+describe(data)
+describe.by(data, data$treatment)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+# Amount of removed observations
+one <- nrow(original[original$trt==1,]) -
+  nrow(data[data$treatment=="Treatment 1",])
+two <- nrow(original[original$trt==2,]) -
+  nrow(data[data$treatment=="Placebo",])
+three <- nrow(original[original$trt==3,]) -
+  nrow(data[data$treatment=="Treatment 3",])
+one
+two
+three
+one / nrow(original[original$trt==1,])
+two / nrow(original[original$trt==2,])
+three / nrow(original[original$trt==3,])
+(nrow(original) - nrow(data)) / nrow(original)
+```
+
+## Evaluating assumtpions
+
+### Comparability of the groups
+
+Based on the previously mentioned descriptive statistics the groups are comparable except for the gender distribution.
+
+### Normality
+
+The final DBP measurement and the DBP difference are normally distributed, but the run-in period DBP measurements are not. Due to the limited size of the sample and the difference between the run-in and final DBP measurement, the result cannot be trusted. Age is not normally distributed, but weight is.
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide', fig.width=3, fig.height=5}
+# Check normality
+par(mfrow=c(3,1)) 
+qqnorm(treat1$dbpdif, main="DBP difference treatment group 1")
+qqline(treat1$dbpdif)
+qqnorm(placebo$dbpdif, main="DBP difference placebo")
+qqline(placebo$dbpdif)
+qqnorm(treat3$dbpdif, main="DBP difference treatment group 3")
+qqline(treat3$dbpdif)
+par(mfrow=c(1,1)) 
+
+qqnorm(treat1$dbp_end, main="Final DBP treatment group 1")
+qqline(treat1$dbp_end)
+qqnorm(placebo$dbp_end, main="Final DBP placebo")
+qqline(placebo$dbp_end)
+qqnorm(treat3$dbp_end, main="Final DBP treatment group 3")
+qqline(treat3$dbp_end)
+
+qqnorm(data$dbp3, main="3rd DBP measure");qqline(data$dbp3)
+qqnorm(data$age, main="Age");qqline(data$age)
+qqnorm(data$weight, main="Weight");qqline(data$weight)
+
+```
+
+### Independence
+
+The observations are independent from one another.
+
+Examining relations between variables:
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+corrplot.mixed(cor(data_raw %>%
+    select(sex, weight, age, comp, dbp_mean, dbpdif, dbp_end)),
+    lower="number", upper="ellipse", tl.pos="d",
+    title = '\n Correlations between variables for all observations')
+# By treatment group
+corrplot.mixed(cor(data_raw[data_raw$treatment == 1,] %>%
+    select(sex, weight, age, comp, dbp_mean, dbpdif, dbp_end)),
+    lower="number", upper="ellipse", tl.pos="d",
+    title = '\n Correlations between variables for Treatment 1')
+corrplot.mixed(cor(data_raw[data_raw$treatment == 2,] %>%
+    select(sex, weight, age, comp, dbp_mean, dbpdif, dbp_end)),
+    lower="number", upper="ellipse", tl.pos="d",
+    title = '\n Correlations between variables for Placebo')
+corrplot.mixed(cor(data_raw[data_raw$treatment == 3,] %>%
+    select(sex, weight, age, comp, dbp_mean, dbpdif, dbp_end)),
+    lower="number", upper="ellipse", tl.pos="d",
+    title = '\n Correlations between variables for Treatment 3')
+```
+
+### Outliers
+
+There are outliers for the DBP3 measure. In the 3rd treatment group, the final DBP has outliers as well as for DBP difference. There are no outliers in the placebo group for the final DBP measure nor the DBP difference.
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+# Boxplot to check for outliers
+boxplot(data$dbp3, main="Run-in DBP measure 3", ylab="DBP")
+boxplot(data$dbpdif~data$treatment, main="DBP difference by group", ylab="DBP")
+boxplot(data$dbp_end~data$treatment, main="Final DBP measure by group")
+```
+
+### Homogenity of variances
+This was only tested for groups 2 and 3, as only these groups are used in the formal analysis.
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+# Creating a dataset with only treatment 2 and 3
+data23 <- data[which(data$treatment != "Treatment 1"),]
+data23$treatment <- droplevels(data23$treatment)
+
+# Comparing the variances of both groups
+with(data23, tapply(dbpdif, treatment, function(x) round(var(x), digits=2)))
+
+# Formal testing via the F-ratio test
+var.test(dbpdif~treatment,data = data23)
+```
+The variances seem comparable and the formal test cannot detect a difference
+
+### Sample size
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+# Sample size for each treatment group, for total population, split by gender
+summary(data$treatment)
+summary(data$treatment[data$sex == "Male"])
+summary(data$treatment[data$sex == "Female"])
+```
+The samples in the total study population are sufficiently large. When split by gender, the groups get somewhat small.
+
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+###############################
+# 2. Descriptives for the research question
+###############################
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+# Columns to rows
+data_pop <- melt(data, id.vars='treatment',
+                 measure.vars=c('dbp3', 'dbp_end', 'dbpdif'))
+data_pop$ID <- seq.int(nrow(data))
+# Custom summary table using dplyr
+summarycols <-
+  list(
+    "treatment1" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(
+          data_pop[data_pop$treatment == "Treatment 1" & data_pop$variable == variable,]$value),
+        "min" = ~ min(data_pop[data_pop$treatment == "Treatment 1" & data_pop$variable == variable,]$value),
+        "25th" = ~ quantile(data_pop[data_pop$treatment == "Treatment 1" & data_pop$variable == variable,]$value, .25),
+        "Median" = ~ median(data_pop[data_pop$treatment == "Treatment 1" & data_pop$variable == variable,]$value),
+        "75th" = ~ quantile(data_pop[data_pop$treatment == "Treatment 1" & data_pop$variable == variable,]$value, .75),
+        "max" = ~ max(data_pop[data_pop$treatment == "Treatment 1" & data_pop$variable == variable,]$value)
+      ),
+    "placebo" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(data_pop[data_pop$treatment == "Placebo" & data_pop$variable == variable,]$value),
+        "min" = ~ min(data_pop[data_pop$treatment == "Placebo" & data_pop$variable == variable,]$value),
+        "25th" = ~ quantile(data_pop[data_pop$treatment == "Placebo" & data_pop$variable == variable,]$value, .25),
+        "Median" = ~ median(data_pop[data_pop$treatment == "Placebo" & data_pop$variable == variable,]$value),
+        "75th" = ~ quantile(data_pop[data_pop$treatment == "Placebo" & data_pop$variable == variable,]$value, .75),
+        "max" = ~ max(data_pop[data_pop$treatment == "Placebo" & data_pop$variable == variable,]$value)
+      ),
+    "treatment3" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(data_pop[data_pop$treatment == "Treatment 3" & data_pop$variable == variable,]$value),
+        "min" = ~ min(data_pop[data_pop$treatment == "Treatment 3" & data_pop$variable == variable,]$value),
+        "25th" = ~ quantile(data_pop[data_pop$treatment == "Treatment 3" & data_pop$variable == variable,]$value, .25),
+        "Median" = ~ median(data_pop[data_pop$treatment == "Treatment 3" & data_pop$variable == variable,]$value),
+        "75th" = ~ quantile(data_pop[data_pop$treatment == "Treatment 3" & data_pop$variable == variable,]$value, .75),
+        "max" = ~ max(data_pop[data_pop$treatment == "Treatment 3" & data_pop$variable == variable,]$value)
+      )
+  )
+print(summary_table(dplyr::group_by(data_pop, variable), summarycols),
+      rtitle = "Summary Statistics",
+      cnames = c("dbp3", "dbp_end", "dbpdif"))
+```
+
+At first glance we can see that the groups had a similar bp at intake visits, but the treatment groups(1,3)
+had a lower bp than before at the final visit. The control group(2) remained more or less stable throughout the study. 
+We can see this as a first indication that the treatment groups did achieve a lower bp.
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+# Boxplot: difference between treatment groups
+par(mfrow=c(1,3), mar=c(2.5, 2, 2, 1)) 
+plot(data$treatment, data$dbp3, ylim=c(70, 130), levels=c("Treatment 1", "Placebo", "Treatment 3"))
+title('DBP at visit 3')
+plot(data$treatment, data$dbp_end,
+     ylim=c(70, 130))
+title('Final DBP')
+plot(data$treatment, data$dbpdif)
+title('DBP difference')
+par(mfrow=c(1,1)) 
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+# Histogram comparison of the final dbp by treatment group
+ggplot(data, aes(x=dbp_end)) +
+  geom_histogram() +
+  facet_grid(~treatment) +
+  stat_bin(binwidth=5) +
+  ggtitle("Final DBP measeurement frequencies by treatment group") +
+  labs(x="DBP")
+```
+
+Checking the consistency of the decrease in dbp measurements for the 3rd treatment group: not all measures follow the trend
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+# Columns to rows
+data_res <- melt(data, id.vars='treatment', measure.vars=c('dbp3','dbp_end'))
+data_res$ID <- seq.int(nrow(data))
+# Profile plot
+ggplot(data_res[data_res$treatment == "Treatment 3",], aes(x=variable, y=value, group=ID)) +
+  geom_point() +
+  geom_line() +
+  ggtitle("DBP evolution before and after the experiment for the 3rd treatment group") +
+  labs(y="DBP")
+```
+
+
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+###############################
+# 3. Formal primary analysis
+###############################
+
+## Parametric
+
+Welch Two Sample t-test
+H0: The difference in diastolic blood pressure is equal in both the third treatment group and the placebo group.
+Ho: mean(third treatment) - mean(placebo) = diff = 0
+Ha: The difference in dialostic blood pressure is bigger in the third treatment group compared to the placebogroup.
+Ha: mean(third treatment) - mean(placebo) = diff != 0
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+t.test(dbpdif~treatment, data = data23, mu=0, alternative = "greater", conf= 0.95, var.eq=T, paired=F)
+```
+
+The difference between DBP measures is greater for treatment 3. The diastolic blood pressure decreases significantly more when using Treament 3.
+Assumptions: 
+scale of measurement, random sampling, normality of data distribution, adequacy of sample size -> Scale is not that large, not sure about normal distribution of both populations
+
+## Non-parametric
+Mann-Whitney U test (because we are not sure about the normal distribution of both populations)
+Only one assumption, Samples are independent and randomly drawn
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+wilcox.test(formula = dbpdif~treatment, data = data23, mu = 0, alt="greater", correct= TRUE, paired = FALSE, conf.int = TRUE, exact =FALSE)
+```
+Same conclusion. The diastolic blood pressure decreases significantly more when using Treament 3.
+In this case I think it is best to use Mann-Whitney since we are not sure about the normal distribution.
+
+
+
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+###############################
+# 4. Binary indicator
+###############################
+Binary indicator of whether (dbp5-dbp3)<10mmHg between the 2 treatment arms.
+Use appropriate 5% sign level & conclude, how and why do treatment arms differ?
+How does this comparison differ from the one above?
+
+
+The actual succes rate can be seen as a proportion.
+To test the proportion difference, we can calcualte the Z-value based on the 2 proportions.
+
+!However, since the sample sizes do not allow us to assume normality (we observe only 2 proportions), a sampling method is more appropriate
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+data23$binary <- 0
+data23$binary[data23$dbpdif<10]<-1
+binTr <-data23[data23$treatment == 'Treatment 3',]$binary
+binPl <-data23[data23$treatment == 'Placebo',]$binary
+pasTr <- sum(binTr)
+pasPl <- sum(binPl)
+nTr <- length(pasTr) 
+nPl <- length(pasPl)
+n_1 <- length(binTr)
+n_2 <- length(binPl)
+p_1 <- sum(binTr)/n_1
+p_2 <- sum(binPl)/n_2
+#P -> the proportion of total passes
+p<-(n_1*p_1+n_2*p_2)/(n_1+n_2)
+#Z-score
+z<-(p_1- p_2)/
+  sqrt(p*(1- p)*(1/n_1+1/n_2))
+#Get the required z-value of chosen significance level
+#1 sided testing, the probability of the trial group passing(P_1) is greater than that of the placebo group (P_2)
+qnorm(0.95, 0, 1)<z
+z
+#power for this statistic
+1- pnorm(z, 0, 1)
+#source: https://onlinecourses.science.psu.edu/stat414/node/268/
+```
+We can reject the 0 hypotheses of the proportions of being under the cut-off being equal at the 95% confidence level.
+The treatments were compared here on a cut-off value of {dbp5-dbp3)<10mmHg}. Instead of comparing the natural group means, we created a yes or no indicator according to our set benchmark. The strength of this test will rely hugely on how well the cut-off value is chosen, and can not be seen as a complete representation of the difference between the groups. Only the difference in relation to the cut-off can be evalueted here.
+
+The best procedure would be to generate a simulation.
+Note that from the 80 observations, only 6 did not meet the (dbp5-dbp3)<10mmHg mark.
+Therefore only 7 possible differences are to be noted. This is by far a smooth distribution and should not be seen as an exact measure.
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+'Using a simulation'
+x<-data23$binary
+y<-c(as.numeric(1:length(data23$binary))) 
+allresp <- data.frame(x,y)    #create df with indexes for sampling
+size <- nrow(allresp)/2 #original size is 80, divide in even groups
+diff<- vector()
+for(i in 1:10000){
+            a <- allresp[sample(nrow(allresp),40),] #sample 40 randoms
+          propa <- sum(a[,1])/size  #calc prop 1
+          #b <- setdiff(allresp, a)  stopped working ??
+          b <- allresp[!(allresp$y%in%unique(a$y)),] #get all values not in a
+          propb <- sum(b[,1])/size  #calc prop 2
+          diff[i] <- c(propa-propb)   
+}
+hist(diff)
+#observed difference likeliness, p-value
+1-sum(c(p_1-p_2)>diff)/length(diff)
+```
+Although the chance that our observed difference is higher than a random difference is, because of the oneven distribution this should be seen as a raw estimate, not a precise measure.
+
+Since the cutoff defined as (dbp5-dbp3)<10mmHg seemed rather wide to us, we decided to also check if (dbp5-dbp3)< -10mmHg,thereby looking if the Treatment group beats the placebo group with at least 10mmHg.
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+data23$binaryrev <- 0
+data23$binaryrev[data23$dbpdif<(-10)]<-1
+binTr <-data23[data23$treatment == 'Treatment 3',]$binaryrev
+binPl <-data23[data23$treatment == 'Placebo',]$binaryrev
+pasTr <- sum(binTr)
+pasPl <- sum(binPl)
+nTr <- length(pasTr) 
+nPl <- length(pasPl)
+n_1 <- length(binTr)
+n_2 <- length(binPl)
+p_1 <- sum(binTr)/n_1
+p_2 <- sum(binPl)/n_2
+#P -> the proportion of total passes
+p<-(n_1*p_1+n_2*p_2)/(n_1+n_2)
+#Z-score
+z<-(p_1- p_2)/
+  sqrt(p*(1- p)*(1/n_1+1/n_2))
+#Get the required z-value of chosen significance level
+#1 sided testing, the probability of the trial group passing(P_1) is greater than that of the placebo group (P_2)
+qnorm(0.95, 0, 1)<z
+1- pnorm(z, 0, 1)
+z
+```
+Here we also see a rejection of the H0, but stronger. A z-value of 3.52 relates to a confidence level of 99.98%, whereas in the first case a 1.76 Z-score relates to a 96.08% confidence level.
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+'Using a simulation'
+x<-data23$binaryrev
+y<-c(as.numeric(1:length(data23$binaryrev))) 
+allresp <- data.frame(x,y)    #create df with indexes for sampling
+size <- nrow(allresp)/2 #original size is 80, divide in even groups
+diff<- vector()
+for(i in 1:10000){
+            a <- allresp[sample(nrow(allresp),40),] #sample 40 randoms
+          propa <- sum(a[,1])/size  #calc prop 1
+          #b <- setdiff(allresp, a)  stopped working ??
+          b <- allresp[!(allresp$y%in%unique(a$y)),] #get all values not in a
+          propb <- sum(b[,1])/size  #calc prop 2
+          diff[i] <- c(propa-propb)   
+}
+hist(diff)
+#observed difference likeliness: p-value
+1-sum(c(p_1-p_2)>diff)/length(diff)
+
+sum(data23$binaryrev)
+```
+
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+###############################
+# 5. Continuous outcome measure
+###############################
+
+expected evolution in blood pressure between visit 5 en 3 in the placebo group.
+
+Test if mean for Placebo group is different from 0. 
+H0: mean difference for placebo group is equal to 0
+H1: mean difference for placebo group is not equal to 0
+
+## Parametric
+using one sample t-test
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+t.test(placebo$dbpdif)
+```
+
+We do not reject the 0 hypothesis, so we expect no difference in bloodpressure between visit 5 an visit 3 in the placebo group. This shows that the effect of treat 1 and 3 can not be dedicated to a placebo effect.
+We could also use a paired t-test to compare dbp3 with dbp5; gives exactly the same results.
+
+## Non-parametric
+using one sample Wilcoxon test
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
+#Samples do not need to be drawn from a population with a normal distribution
+qqnorm(placebo$dbpdif)
+qqline(placebo$dbpdif)
+wilcox.test(placebo$dbpdif, mu=0)
+```
+Same conclusion: H0 is not rejected, mean is not different from zero. No placebo effect.
+
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+###############################
+# 6 Gender difference
+###############################
+
+Does the mean difference in dbpdif between group 3 and group 2 depend on gender? Derive a justified answer.
+2-way anova to see a possible interaction between treat and gender.
+
+```{r}
+str(treat3)
+```
+
+```{r}
+#Nieuw object maken dat enkel data van groepen 2 en 3 bevat
+data23 <- data[which(data$treatment != "Treatment 1"),]
+data23$treatment <- droplevels(data23$treatment)
+data23$treatment <- as.factor(data23$treatment)
+```
+
+## Visualization
+
+```{r}
+#(!require(devtools)) install.packages("devtools")
+#devtools::install_github("kassambara/ggpubr")
+str(data23)
+library(ggpubr)
+plot <- ggline(data23, x = "treatment", y = "dbpdif", color = "sex",
+               add = c("mean_se", "dotplot"),
+               palette = c("#00AFBB", "#E7B800"))
+plot
+```
+Two-way ANOVA with interaction
+Interaction = the effect of one factor on the dependent variable depends on the level of another factor
+```{r}
+model1 <- lm(dbpdif ~ sex * treatment, data = data23)
+anova(model1)
+#type 1 because we are interested in the interaction
+```
+
+There is no interaction, so the mean difference between group 3 and 2 does not depend on gender.
+
+## Check assumptions of the model
+```{r}
+#Assumption 1 : Normal distribution of the model residuals
+plot(model1,2)
+```
+Residuals approximatly normally distributed.
+
+```{r}
+#Assumption 2: Homogeneity of variance of the groups
+plot(model1,1)
+leveneTest(dbpdif ~ sex * treatment, data = data23)
+```
+P-value is larger than 0.05 so variances are approximatly equal.
+Both assumptions are met.
+
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+###############################
+# 7 Power of the gender difference test
+###############################
+```{R}
+# Finding the mean of each gender-treatment combination in the real dataset
+mu2f <- mean(data23$dbpdif[data23$treatment == "Placebo" & data23$sex == "Female"])
+mu3f <- mean(data23$dbpdif[data23$treatment == "Treatment 3" & data23$sex == "Female"])
+mu2m <- mean(data23$dbpdif[data23$treatment == "Placebo" & data23$sex == "Male"])
+mu3m <- mean(data23$dbpdif[data23$treatment == "Treatment 3" & data23$sex == "Male"])
+
+mu2_sim <- (mu2f + mu2m)/2
+mu3_sim <- (mu3f + mu3m)/2
+
+# Finding the sd of each gender-treatment combination in the real dataset
+sd2f <- sd(data23$dbpdif[data23$treatment == "Placebo" & data23$sex == "Female"])
+sd3f <- sd(data23$dbpdif[data23$treatment == "Treatment 3" & data23$sex == "Female"])
+sd2m <- sd(data23$dbpdif[data23$treatment == "Placebo" & data23$sex == "Male"])
+sd3m <- sd(data23$dbpdif[data23$treatment == "Treatment 3" & data23$sex == "Male"])
+
+# Simulation study to find the power of the ANOVA-interaction test
+power_data <- vector(,10000)
+set.seed(2018)
+for(i in 1:10000) {
+  sim2f <- rnorm(19, mean = mu2_sim, sd = sd2f)
+  sim3f <- rnorm(20, mean = mu3_sim - 2, sd = sd3f) # mean decreased by 2 for females
+  sim2m <- rnorm(22, mean = mu2_sim, sd = sd2m)
+  sim3m <- rnorm(19, mean = mu3_sim + 2, sd = sd3m) # mean increased by 2 for males
+  # The genders now differ 4 mmHg in treatment effect on average
+  
+  #Creating a dataframe from the simulated values
+  dbpdif <- c(sim2f, sim3f, sim2m, sim3m)
+  genders <- as.factor(c(rep("Female", 39), rep("Male", 41)))
+  treatments <- as.factor(c(rep("placebo", 19), rep("treatment3", 20), rep("placebo", 22), rep("treatment3", 19)))
+  sim_data <- data.frame (data.frame(dbpdif, genders), treatments)
+  
+  #Calculating the significance of the interaction in the simulated data
+  sim_model1 <- lm(dbpdif ~ genders * treatments, data = sim_data)
+  aov_result <- anova(sim_model1)
+  x <- aov_result$`Pr(>F)`[[3]]
+  power_data[i] <- x
+}
+mean(power_data < 0.05)
+```
+The ANOVA approach has a power of 13%
+
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+###############################
+# Other explorations
+###############################
+
+Summary table alternative version
+```{r}
+# Alternative custom summary table using dplyr
+summarycols <-
+  list(
+    "Run-in mean DBP" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(dbp_mean),
+        "min" = ~ min(dbp_mean),
+        "25th" = ~ quantile(dbp_mean, .25),
+        "Median" = ~ median(dbp_mean),
+        "75th" = ~ quantile(dbp_mean, .75),
+        "max" = ~ max(dbp_mean)
+      ),
+    "Final DBP" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(dbp_end),
+        "min" = ~ min(dbp_end),
+        "25th" = ~ quantile(dbp_end, .25),
+        "Median" = ~ median(dbp_end),
+        "75th" = ~ quantile(dbp_end, .75),
+        "max" = ~ max(dbp_end)
+      ),
+    "DBP change" =
+      list(
+        "mean (sd)" = ~ qwraps2::mean_sd(dbp_mean),
+        "min" = ~ min(dbp_mean),
+        "25th" = ~ quantile(dbp_mean, .25),
+        "Median" = ~ median(dbp_mean),
+        "75th" = ~ quantile(dbp_mean, .75),
+        "max" = ~ max(dbp_mean)
+      )
+  )
+print(summary_table(dplyr::group_by(data, treatment), summarycols),
+      rtitle = "Summary Statistics",
+      cnames = c("Treatment 1", "Placebo", "Treatment 3"))
+```
+
+Change between the run-in period DBP measurements
+```{r}
+# Columns to rows
+data_res <- melt(data, id.vars='treatment', measure.vars=c('dbp1','dbp2','dbp3'))
+data_res$ID <- seq.int(nrow(data))
+# Profile plot
+ggplot(data_res, aes(x=variable, y=value, group=ID)) +
+  geom_point() +
+  geom_line()
+```
