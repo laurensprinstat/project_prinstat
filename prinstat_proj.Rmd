@@ -468,8 +468,7 @@ sum(data23$binaryrev)
 
 
 Extra base R tests, for reference
-```{r eval=FALSE, include=FALSE}
-#optiona
+#optional
 #z.prop(pasTr, pasPl, nTr, nPl)      
 #Using base R
 #prop.test(c(pasTr,pasPl),
@@ -478,7 +477,6 @@ Extra base R tests, for reference
           )
 #prop test uses a X-squared test
 #'We see using a base R test using the X-square test that at the 0.05 accuracy rate we cant reject H0, but at the 0.06 rate we can. Although not overwhelming, we have some indication of Treatment 3 group measures being more below the 10 mmGh limit than placebo measures with this non-parametric test.'
-```
 
 ------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------
