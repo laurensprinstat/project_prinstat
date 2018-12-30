@@ -35,9 +35,131 @@ data$treatment <- as.factor(mapvalues(
 data$sex <- as.factor(mapvalues(data$sex, from=c(0, 1), to=c("Female", "Male")))
 # 80% adherence rule
 data <- data[data$comp >= 0.8,]
+##TS: don't we remove the patient with a blood pressure of 66?
 # Subset of treatment 1 and the placebo
 data12 <- data[data$treatment != "Treatment 3",]
 levels(data12$treatment) <- c("Treatment 1", "Placebo", NA)
+```
+```{r}
+##################
+#Question 1 (TS) #
+##################
+n1 <- summary(data$treatment)[[1]]
+n2 <- summary(data$treatment)[[2]]
+
+#Simulating the dbpdif data
+qqnorm(data$dbpdif[data$treatment == "Treatment 1"]) ; qqline(data$dbpdif[data$treatment == "Treatment 1"])
+#Skewed to the left?
+qqnorm(data$dbpdif[data$treatment == "Placebo"]) ; qqline(data$dbpdif[data$treatment == "Placebo"])
+#Short tail on the right?
+var.test(data$dbpdif[data$treatment == "Treatment 1"], data$dbpdif[data$treatment == "Placebo"])
+#Although just not significant, the ratio of the variances seems to deviate from 1. I think it would be safer to assume that the variances are not equal.
+
+mu_dif1 <- mean(data$dbpdif[data$treatment == "Treatment 1"])
+mu_dif2 <- mean(data$dbpdif[data$treatment == "Placebo"])
+sd_dif1 <- sd(data$dbpdif[data$treatment == "Treatment 1"])
+sd_dif2 <- sd(data$dbpdif[data$treatment == "Placebo"])
+
+rdif1 <- rnorm(n1, mu_dif1, sd_dif1)
+rdif2 <- rnorm(n2, mu_dif2, sd_dif2)
+qqnorm(rdif1) ; qqline(rdif1)
+qqnorm(rdif2) ; qqline(rdif2)
+##QQplots from data generated randomly from normal distributions show similar deviations as the QQplots of the data
+
+#Simulating the dbp_end data
+qqnorm(data$dbp_end[data$treatment == "Treatment 1"]) ; qqline(data$dbp_end[data$treatment == "Treatment 1"])
+#1 outlier to the left?
+qqnorm(data$dbp_end[data$treatment == "Placebo"]) ; qqline(data$dbp_end[data$treatment == "Placebo"])
+#Short tail on the left?
+#The dbp_end seems to show fewer deviations from normality than dbpdif
+
+mu_end1 <- mean(data$dbp_end[data$treatment == "Treatment 1"])
+mu_end2 <- mean(data$dbp_end[data$treatment == "Placebo"])
+sd_end1 <- sd(data$dbp_end[data$treatment == "Treatment 1"])
+sd_end2 <- sd(data$dbp_end[data$treatment == "Placebo"])
+
+rend1 <- rnorm(n1, mu_end1, sd_end1)
+rend2 <- rnorm(n2, mu_end2, sd_end2)
+qqnorm(rend1) ; qqline(rend1)
+qqnorm(rend2) ; qqline(rend2)
+##QQplots from data generated randomly from normal distributions show similar deviations as the QQplots of the data
+
+##Parametric simulation: 10000 simulations for each of 40 differences in means, both for dbpdif and dbp_end. These are plotted together for comparison
+pwr_dif <- vector(,40)
+for(y in 1:40){
+  x <- 0.025 * y
+  pdif <- vector(, 10000)
+  for(i in 1:10000) {
+    mu_dif1.2 <- mu_dif1 + (abs(mu_dif1) - abs(mu_dif2))*x
+    rdif1 <- rnorm(n1, mu_dif1.2, sd_dif1)
+    rdif2 <- rnorm(n2, mu_dif2, sd_dif2)
+    tdif <- t.test(rdif1, rdif2, alternative = "less", mu = 0, paired = F, var.equal = F)
+    pdif[i] <- tdif$p.value
+  }
+  pwr_dif[y] <-mean(pdif < 0.05)
+}
+plot(pwr_dif, type = "o", col = "blue")
+
+pwr_end <- vector(,40)
+for(y in 1:40){
+  x <- 0.025 * y
+  pend <- vector(, 10000)
+  for(i in 1:10000) {
+    mu_end1.2 <- mu_end1 + (mu_end2 - mu_end1)*x
+    rend1 <- rnorm(n1, mu_end1.2, sd_end1)
+    rend2 <- rnorm(n2, mu_end2, sd_end2)
+    tend <- t.test(rend1, rend2, alternative = "less", mu = 0, paired = F, var.equal = F)
+    pend[i] <- tend$p.value
+  }
+  pwr_end[y] <-mean(pend < 0.05)
+}
+lines(pwr_end, type = "o", pch = 22, lty = 2, col = "red")
+
+pwr_gap <- pwr_end - pwr_dif
+
+```
+
+##################
+#Question 2 (TS) #
+##################
+```{r}
+##Analytical approach to the power of the t-test
+alpha <- 0.05
+n <- n1 + n2
+#Alpha is not divided by 2, as we test one-sided
+t.alpha <- qt(1-alpha, df = n - 2)
+
+#With dbpdif, where the difference between the groups is decreased by 20%
+mu_dif1.2 <- mu_dif1 + (abs(mu_dif1) - abs(mu_dif2))*0.2
+delta_dif.2 <- abs(mu_dif1.2 - mu_dif2)
+lambda_dif.2 <- delta_dif.2 /  sqrt(var(data$dbpdif[data$treatment == "Treatment 1"])/n1 + 
+                                var(data$dbpdif[data$treatment == "Placebo"])/n2)
+1 - pt(t.alpha, df = n - 2, ncp = lambda_dif.2)
+
+#With dbpdif, where the difference between the groups is decreased by 50%
+mu_dif1.5 <- mu_dif1 + (abs(mu_dif1) - abs(mu_dif2))*0.5
+delta_dif.5 <- abs(mu_dif1.5 - mu_dif2)
+lambda_dif.5 <- delta_dif.5 /  sqrt(var(data$dbpdif[data$treatment == "Treatment 1"])/n1 + 
+                                var(data$dbpdif[data$treatment == "Placebo"])/n2)
+1 - pt(t.alpha, df = n - 2, ncp = lambda_dif.5)
+
+#With dbp5, where the difference between the groups is decreased by 20%
+mu_end1.2 <- mu_end1 + (mu_end2 - mu_end1)*0.2
+delta_end.2 <- abs(mu_end1.2 - mu_end2)
+lambda_end.2 <- delta_end.2 /  sqrt(var(data$dbp5[data$treatment == "Treatment 1"])/n1 + 
+                                  var(data$dbp5[data$treatment == "Placebo"])/n2)
+1 - pt(t.alpha, df = n - 2, ncp = lambda_end.2)
+
+#With dbp5, where the difference between the groups is decreased by 50%
+mu_end1.5 <- mu_end1 + (mu_end2 - mu_end1)*0.5
+delta_end.5 <- abs(mu_end1.5 - mu_end2)
+lambda_end.5 <- delta_end.5 /  sqrt(var(data$dbp5[data$treatment == "Treatment 1"])/n1 + 
+                                  var(data$dbp5[data$treatment == "Placebo"])/n2)
+1 - pt(t.alpha, df = n - 2, ncp = lambda_end.5)
+
+#Non-parametric alternative: The l (lambda) is much too large, this doesn't work
+l_dif.2 <- sqrt((12 * n1 * n2) / (n + 1)) * delta_dif.2
+1 - pt(t.alpha, df = n - 2, ncp = l_dif.2)
 ```
 
 ## 2. 
