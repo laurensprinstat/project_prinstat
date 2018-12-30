@@ -163,11 +163,5 @@ l_dif.2 <- sqrt((12 * n1 * n2) / (n + 1)) * delta_dif.2
 1 - pt(t.alpha, df = n - 2, ncp = l_dif.2)
 ```
 
-## 2. 
-
-```{r}
-# Amount of possible permutations
-choose(84, 42)
-```
 
 
