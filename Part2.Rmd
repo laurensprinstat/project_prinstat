@@ -147,15 +147,15 @@ lambda_dif.5 <- delta_dif.5 /  sqrt(var(data$dbpdif[data$treatment == "Treatment
 #With dbp5, where the difference between the groups is decreased by 20%
 mu_end1.2 <- mu_end1 + (mu_end2 - mu_end1)*0.2
 delta_end.2 <- abs(mu_end1.2 - mu_end2)
-lambda_end.2 <- delta_end.2 /  sqrt(var(data$dbp5[data$treatment == "Treatment 1"])/n1 + 
-                                  var(data$dbp5[data$treatment == "Placebo"])/n2)
+lambda_end.2 <- delta_end.2 /  sqrt(var(data$dbp_end[data$treatment == "Treatment 1"])/n1 + 
+                                  var(data$dbp_end[data$treatment == "Placebo"])/n2)
 1 - pt(t.alpha, df = n - 2, ncp = lambda_end.2)
 
 #With dbp5, where the difference between the groups is decreased by 50%
 mu_end1.5 <- mu_end1 + (mu_end2 - mu_end1)*0.5
 delta_end.5 <- abs(mu_end1.5 - mu_end2)
-lambda_end.5 <- delta_end.5 /  sqrt(var(data$dbp5[data$treatment == "Treatment 1"])/n1 + 
-                                  var(data$dbp5[data$treatment == "Placebo"])/n2)
+lambda_end.5 <- delta_end.5 /  sqrt(var(data$dbp_end[data$treatment == "Treatment 1"])/n1 + 
+                                  var(data$dbp_end[data$treatment == "Placebo"])/n2)
 1 - pt(t.alpha, df = n - 2, ncp = lambda_end.5)
 
 #Non-parametric alternative: The l (lambda) is much too large, this doesn't work
