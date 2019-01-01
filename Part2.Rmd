@@ -163,5 +163,36 @@ l_dif.2 <- sqrt((12 * n1 * n2) / (n + 1)) * delta_dif.2
 1 - pt(t.alpha, df = n - 2, ncp = l_dif.2)
 ```
 
+###################
+# Question 3 (LS) #
+###################
+
+```{r}
+n <- 1000000
+power <- vector(, n)
+type1 <- vector(, n)
+set.seed(1991)
+for(i in 1:n){
+  r_placebo <- rnorm(n=n_placebo, mean=mean_placebo, sd=sd_placebo)
+  r_treat <- rnorm(n=n_treatment, mean=mean_treatment, sd=sd_treatment)
+  r_placebo_0 <- rnorm(n=n_placebo, mean=0, sd=sd_placebo)
+  r_treat_0 <- rnorm(n=n_treatment, mean=0, sd=sd_treatment)
+  # One sided pooled t-test
+  test <- t.test(r_treat, r_placebo, alternative="less", var.equal=FALSE)
+  test_0 <- t.test(r_treat_0, r_placebo_0, alternative="greater", var.equal=FALSE)
+  power[i] <- test$p.value
+  type1[i] <- test_0$p.value
+}
+# Power
+mean(power < 0.05)
+# Type 1
+mean(type1 < 0.05)
+```
+
+[1] 0.999900
+Approx power approaching 100% or >99.9%
+
+[1] 0.050319
+Type 1 error rate of approx 5%?
 
 
