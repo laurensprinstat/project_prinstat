@@ -158,6 +158,14 @@ l_dif.2 <- sqrt((12 * n1 * n2) / (n + 1)) * delta_dif.2
 ###################
 
 ```{r}
+n_placebo <- summary(data12$treatment)[["Placebo"]]
+n_treatment <- summary(data12$treatment)[["Treatment 1"]]
+mean_placebo <- mean(data12[data12$treatment == "Placebo",]$dbp_end)
+mean_treatment <- mean(data12[data12$treatment == "Treatment 1",]$dbp_end)
+#mean_difference <- mean_treatment - mean_placebo
+sd_placebo <- sd(data12[data12$treatment == "Placebo",]$dbp_end)
+sd_treatment <- sd(data12[data12$treatment == "Treatment 1",]$dbp_end)
+
 n <- 1000000
 power <- vector(, n)
 type1 <- vector(, n)
