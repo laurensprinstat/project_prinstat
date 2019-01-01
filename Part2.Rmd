@@ -86,38 +86,44 @@ qqnorm(rend2) ; qqline(rend2)
 ##QQplots from data generated randomly from normal distributions show similar deviations as the QQplots of the data
 
 ##Parametric simulation: 10000 simulations for each of 40 differences in means, both for dbpdif and dbp_end. These are plotted together for comparison
-pwr_dif <- vector(,40)
-for(y in 1:40){
+pwr_dif <- vector(,41)
+set.seed(2018)
+for(y in 0:40){
   x <- 0.025 * y
   pdif <- vector(, 10000)
   for(i in 1:10000) {
-    mu_dif1.2 <- mu_dif1 + (abs(mu_dif1) - abs(mu_dif2))*x
+    mu_dif1.2 <- mu_dif1 + (abs(mu_dif1) - abs(mu_dif2)) * x
     rdif1 <- rnorm(n1, mu_dif1.2, sd_dif1)
     rdif2 <- rnorm(n2, mu_dif2, sd_dif2)
     tdif <- t.test(rdif1, rdif2, alternative = "less", mu = 0, paired = F, var.equal = F)
     pdif[i] <- tdif$p.value
   }
-  pwr_dif[y] <-mean(pdif < 0.05)
+  pwr_dif[y+1] <-mean(pdif < 0.05)
 }
-plot(pwr_dif, type = "o", col = "blue")
 
-pwr_end <- vector(,40)
-for(y in 1:40){
+pwr_end <- vector(,41)
+set.seed(2019)
+for(y in 0:40){
   x <- 0.025 * y
   pend <- vector(, 10000)
   for(i in 1:10000) {
-    mu_end1.2 <- mu_end1 + (mu_end2 - mu_end1)*x
+    mu_end1.2 <- mu_end1 + (mu_end2 - mu_end1) * x
     rend1 <- rnorm(n1, mu_end1.2, sd_end1)
     rend2 <- rnorm(n2, mu_end2, sd_end2)
     tend <- t.test(rend1, rend2, alternative = "less", mu = 0, paired = F, var.equal = F)
     pend[i] <- tend$p.value
   }
-  pwr_end[y] <-mean(pend < 0.05)
+  pwr_end[y+1] <-mean(pend < 0.05)
 }
-lines(pwr_end, type = "o", pch = 22, lty = 2, col = "red")
 
-pwr_gap <- pwr_end - pwr_dif
-
+#Plotting both power simulations in the same graph
+plot(pwr_dif, type = "n", xaxt = "n", xlab = "Difference in means (% observed difference)", 
+     yaxt = "n", ylab = "Power (%)", main = "Comparative power") ; 
+lines(rev(pwr_dif), lty = 1, col = "blue") ; lines(rev(pwr_end), pch = 1, lty = 2, col = "red")
+axis(side = 1, at = seq(from = 0, to = 40, by = 4), labels = seq(from = 0, to = 100, by = 10))
+axis(side = 2, at = seq(from = 0, to = 1, by = 0.2), labels = seq(from = 0, to = 100, by = 20))
+legend(33.77, 1.036, legend = c("dbp_dif", "dbp_end"),
+       col = c("blue", "red"), lty=1:2, cex=1.2)
 ```
 
 ##################
@@ -130,33 +136,17 @@ n <- n1 + n2
 #Alpha is not divided by 2, as we test one-sided
 t.alpha <- qt(1-alpha, df = n - 2)
 
-#With dbpdif, where the difference between the groups is decreased by 20%
-mu_dif1.2 <- mu_dif1 + (abs(mu_dif1) - abs(mu_dif2))*0.2
-delta_dif.2 <- abs(mu_dif1.2 - mu_dif2)
-lambda_dif.2 <- delta_dif.2 /  sqrt(var(data$dbpdif[data$treatment == "Treatment 1"])/n1 + 
-                                var(data$dbpdif[data$treatment == "Placebo"])/n2)
-1 - pt(t.alpha, df = n - 2, ncp = lambda_dif.2)
+#With dbpdif, where the difference between the groups is 42.5% of the observed difference
+delta_dif <- -(mu_dif1 - mu_dif2) * 0.425
+lambda_dif <- delta_dif /  sqrt(var(data$dbpdif[data$treatment == "Treatment 1"])/n1 + 
+                                      var(data$dbpdif[data$treatment == "Placebo"])/n2)
+1 - pt(t.alpha, df = n - 2, ncp = lambda_dif)
 
-#With dbpdif, where the difference between the groups is decreased by 50%
-mu_dif1.5 <- mu_dif1 + (abs(mu_dif1) - abs(mu_dif2))*0.5
-delta_dif.5 <- abs(mu_dif1.5 - mu_dif2)
-lambda_dif.5 <- delta_dif.5 /  sqrt(var(data$dbpdif[data$treatment == "Treatment 1"])/n1 + 
-                                var(data$dbpdif[data$treatment == "Placebo"])/n2)
-1 - pt(t.alpha, df = n - 2, ncp = lambda_dif.5)
-
-#With dbp5, where the difference between the groups is decreased by 20%
-mu_end1.2 <- mu_end1 + (mu_end2 - mu_end1)*0.2
-delta_end.2 <- abs(mu_end1.2 - mu_end2)
-lambda_end.2 <- delta_end.2 /  sqrt(var(data$dbp_end[data$treatment == "Treatment 1"])/n1 + 
-                                  var(data$dbp_end[data$treatment == "Placebo"])/n2)
-1 - pt(t.alpha, df = n - 2, ncp = lambda_end.2)
-
-#With dbp5, where the difference between the groups is decreased by 50%
-mu_end1.5 <- mu_end1 + (mu_end2 - mu_end1)*0.5
-delta_end.5 <- abs(mu_end1.5 - mu_end2)
-lambda_end.5 <- delta_end.5 /  sqrt(var(data$dbp_end[data$treatment == "Treatment 1"])/n1 + 
-                                  var(data$dbp_end[data$treatment == "Placebo"])/n2)
-1 - pt(t.alpha, df = n - 2, ncp = lambda_end.5)
+#With dbp_end, where the difference between the groups is 42,5% of the observed difference
+delta_end <- -(mu_end1 - mu_end2) * 0.425
+lambda_end <- delta_end /  sqrt(var(data$dbp_end[data$treatment == "Treatment 1"])/n1 + 
+                                      var(data$dbp_end[data$treatment == "Placebo"])/n2)
+1 - pt(t.alpha, df = n - 2, ncp = lambda_end)
 
 #Non-parametric alternative: The l (lambda) is much too large, this doesn't work
 l_dif.2 <- sqrt((12 * n1 * n2) / (n + 1)) * delta_dif.2
