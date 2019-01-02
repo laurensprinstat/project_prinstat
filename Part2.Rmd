@@ -194,3 +194,92 @@ Approx power approaching 100% or >99.9%
 Type 1 error rate of approx 5%?
 
 
+# Something
+
+```{r}
+# observed means
+mean_p_end <- mean(data12[data12$treatment == "Placebo",]$dbp_end)
+mean_t_end <- mean(data12[data12$treatment == "Treatment 1",]$dbp_end)
+dif_end <- mean_p_end - mean_t_end
+mean_p_dif <- mean(data12[data12$treatment == "Placebo",]$dbpdif)
+mean_t_dif <- mean(data12[data12$treatment == "Treatment 1",]$dbpdif)
+dif_dif <- mean_p_dif - mean_t_dif
+
+# Permutation settings
+n_sim <- 100000
+tt_end <- rep(NA, n_sim)
+tt_dif <- rep(NA, n_sim)
+pdata <- data12
+set.seed(1991)
+
+# Permutation
+for(i in 1:n_sim){
+  pdata$treatment <- sample(pdata$treatment)
+  tt_end[i] <- t.test(dbp_end ~ treatment, data=pdata, alternative="less", var.equal=FALSE)$statistic
+  tt_dif[i] <- t.test(dbpdif ~ treatment, data=pdata, alternative="less", var.equal=FALSE)$statistic
+}
+
+# Whilutation settings
+p_end <- 1
+p_dif <- 1
+adj = 0
+
+# Whilutation until p-value of 0.05
+while (min(c(p_end, p_dif)) > 0.05) {
+  # Difference in means
+  adj <- round(adj + 0.01, 2)
+  # Equalize means and add difference
+  adj_t_end <- data12[data12$treatment == "Treatment 1",]$dbp_end + dif_end - adj
+  adj_t_dif <- data12[data12$treatment == "Treatment 1",]$dbpdif + dif_dif - adj
+  # Adjusted means t-test
+  tt_obs_end <- t.test(adj_t_end, r_p_end, alternative="less", var.equal=FALSE)$statistic
+  tt_obs_dif <- t.test(adj_t_dif, r_p_dif, alternative="less", var.equal=FALSE)$statistic
+  # P-value
+  p_end <- mean(tt_end < tt_obs_end)
+  p_dif <- mean(tt_dif < tt_obs_dif)
+}
+# Result
+paste("Smallest detected difference:", round(adj, 2))
+paste("P-value final measure:", p_end)
+paste("P-value difference dbp5-3:", p_dif)
+```
+
+[1] "Smallest detected difference: 0.86"
+[1] "P-value final measure: 0.06463"
+[1] "P-value difference dbp5-3: 0.04967"
+
+```{r}
+# Whilutation settings
+j <- 0
+adj <- 0
+adj_max <- 12
+adj_step <- 0.01
+continue <- TRUE
+
+# Collect all data for graph (until p-value approaches 0)
+while (adj <= adj_max && continue) {
+  adj <- round(adj_step * j, 2)
+  j <- j + 1
+  # Equalize means and set difference
+  adj_t_end <- data12[data12$treatment == "Treatment 1",]$dbp_end + dif_end - adj
+  adj_t_dif <- data12[data12$treatment == "Treatment 1",]$dbpdif + dif_dif - adj
+  # Adjusted difference observed value
+  tt_obs_end <- t.test(adj_t_end, r_p_end, alternative="less", var.equal=FALSE)$statistic
+  tt_obs_dif <- t.test(adj_t_dif, r_p_dif, alternative="less", var.equal=FALSE)$statistic
+  # P-value
+  p_end[j] <- mean(tt_end < tt_obs_end)
+  p_dif[j] <- mean(tt_dif < tt_obs_dif)
+  # Stop if both approach 0
+  continue <- p_end[j] != 0 || p_dif[j] != 0
+  adj_stop <- adj
+}
+```
+
+```{r}
+# Plot the result
+ymax <- max(p_end, p_dif)
+plot(p_dif, col="blue", type="l", xaxt="n", xlab="Difference in means", ylab="P-value", main="P-value by difference in means", ylim=c(0, ymax))
+lines(p_end, col="green")
+abline(0.05, 0, col="red")
+axis(side = 1, at=seq(0, 700, 100), labels=seq(0, 7, 1))
+```
