@@ -283,3 +283,33 @@ lines(p_end, col="green")
 abline(0.05, 0, col="red")
 axis(side = 1, at=seq(0, 700, 100), labels=seq(0, 7, 1))
 ```
+
+
+```{r}
+sd_p_dif <- sd(data12[data12$treatment == "Placebo",]$dbpdif)
+sd_t_dif <- sd(data12[data12$treatment == "Treatment 1",]$dbpdif)
+
+n_sim <- 100000
+r_power <- rep(NA, n_sim)
+r_type1 <- rep(NA, n_sim)
+set.seed(1991)
+
+for(i in 1:n_sim){
+  r_placebo <- rnorm(n=n_placebo, mean=mean_p_dif, sd=sd_p_dif)
+  r_treat <- rnorm(n=n_treatment, mean=mean_t_dif + dif_dif - adj, sd=sd_t_dif)
+  r_placebo_0 <- rnorm(n=n_placebo, mean=0, sd=sd_placebo)
+  r_treat_0 <- rnorm(n=n_treatment, mean=0, sd=sd_treatment)
+  # One sided pooled t-test
+  test <- t.test(r_treat, r_placebo, alternative="less", var.equal=FALSE)
+  test_0 <- t.test(r_treat_0, r_placebo_0, alternative="greater", var.equal=FALSE)
+  r_power[i] <- test$p.value
+  r_type1[i] <- test_0$p.value
+}
+# Power
+mean(r_power < 0.05)
+# Type 1
+mean(r_type1 < 0.05)
+```
+
+Power 0.98838
+Type 1 0.04976
