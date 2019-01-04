@@ -1,0 +1,176 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Load packages
+```{r}
+library(plyr)
+library(coin)
+```
+
+I. Read in the data & clean
+```{r}
+# Read in data
+data <- read.table("bptrial.txt", header=TRUE, sep=",", dec=".")
+original <- data
+# Set column names
+colnames(data) <- c("treatment", "sex", "weight", "age",
+                    "comp", "dbpdif", "dbp3", "dbp2", "dbp1")
+# Add column dbp_end for the 5th measurement at the end of the experiment
+data$dbp_end <- data$dbp3 + data$dbpdif
+# Mean dbp during the run-in period
+data$dbp_mean <- round((data$dbp1 + data$dbp2 + data$dbp3) / 3, 1)
+# Raw data subset
+data_raw <- data
+# Treatment group as factor
+data$treatment <- as.factor(mapvalues(
+  data$treatment,
+  from=c(1, 2, 3),
+  to=c("Treatment 1", "Placebo", "Treatment 3")
+))
+# Gender as factor
+data$sex <- as.factor(mapvalues(data$sex, from=c(0, 1), to=c("Female", "Male")))
+# 80% adherence rule
+data <- data[data$comp >= 0.8,]
+##TS: don't we remove the patient with a blood pressure of 66?
+data = data[data$dbp3 != 66,]
+# Subset of treatment 1 and the placebo
+data12 <- data[data$treatment != "Treatment 3",]
+levels(data12$treatment) <- c("Treatment 1", "Placebo", NA)
+```
+
+1. A simulation study should be conducted to assess which variable is best used for analysis:
+Two variable tests should be compared here to quantify the difference between treatment 1 & 2,:
+a. 'use the blood pressure measured at the end' (dbp5)
+b. 'the change from baseline' (dbpend)
+Which one is preferable should be concluded from the Power or Precision.
+We will compute the power based on a 0.05 test statistic for both and compare.
+In accordance with our analysis in the first part, we will rely on the Central Limit Theorum to justify the use of a t-test.
+
+
+1. Compute the power for treatment 1 vs treatment 2 looking at (1)dbp5 'aka dbp_end' & (2) dbpdif,
+based on simulated data 
+```{r}
+#both groups
+data12 <- data[data$treatment != "Treatment 3",]
+
+#individual groups
+treat1 <- data[data$treatment == "Treatment 1",]
+treat2 <- data[data$treatment == "Placebo",]
+
+#looking at qqplots
+#make a function to generate named plots of variable of choice
+qqplotter <- function(variable){
+  qqnorm(variable, 
+         main= c(paste('QQPlot of:',deparse(substitute(variable))))
+         )
+  ; qqline(variable)
+}
+
+#looking at dbp_end
+qqplotter(treat1$dbp_end)
+qqplotter(treat2$dbp_end)
+
+#looking at dbpdif
+qqplotter(treat1$dbpdif)
+qqplotter(treat2$dbpdif)
+
+#We can conclude the tails are problematic to assume a normal distribution.
+#However, for each variable in each group we find support for the central Limit Theorum, and thus can use a t-test
+length(treat1$dbp_end)>30
+length(treat2$dbp_end)>30
+length(treat1$dbpdif)>30
+length(treat2$dbpdif)>30
+
+#Looking at the variances
+#equal variances have a a ratio of 1
+#It is better to use a Welch t test
+var.test(treat1$dbpdif, treat2$dbpdif)   #marginally significant evidence against H0 (0.056)
+var.test(treat1$dbp_end, treat2$dbp_end) #doubtfull evidence, but a ratio of 0.61 enough to assume unequal
+
+#Get means & sd to simulate data
+meansd <- function(variable){
+  return(c(
+    mean(variable),
+    sd(variable)
+    ))
+}
+
+meansd(treat1$dbp_end)
+meansd(treat2$dbp_end)
+meansd(treat1$dbpdif)
+meansd(treat2$dbpdif)   #note here that the largest difference in observed means is no more than |13|
+
+#simulate 1ce to check if distributions are comparable
+#the generations is random, when executing the simulation multiple times,
+#we see that some mimic the data, some seem quite different (as to be expected)
+simqq <- function(variable){
+  simulated_distr <- rnorm(n = length(variable),
+        mean = mean(variable),
+        sd = sd(variable))
+  par(mfrow=c(1,2))
+  qqplotter(variable)
+  qqplotter(simulated_distr)
+  par(mfrow=c(1,1))
+}
+simqq(treat1$dbp_end)
+simqq(treat2$dbp_end)
+simqq(treat1$dbpdif)
+simqq(treat2$dbpdif)
+
+#start actual power simulations
+
+#(dbp5) 1 sided testing, treatment 1 bp mean is expected to be below (smaller) treat 2 
+'H0' ->  'mean(treat1$dbp_end)' = 'mean(treat2$dbp_end)' ; 'HA' ->  'mean(treat1$dbp_end)' < 'mean(treat2$dbp_end)'
+#(dbp_dif) 1 sided testing, the diff mean in treat 1 is expected to be more negative (smaller) than in treat 2
+'H0' ->  'mean(treat1$dbp_dif)' = 'mean(treat2$dbp_dif)' ; 'HA' ->  'mean(treat1$dbp_dif)' < 'mean(treat2$dbp_dif)'
+
+#There are 2 ways we will look at to influence power
+#1 look at the difference value
+#2 Look at the sample size
+
+#1 difference value
+#create a power loop in a functio,, to be reused for dbpdif
+
+
+
+power_f_delta<-function(N.sim, variable1, variable2){
+pdif <-vector()
+power <- vector()
+meandif <- vector()
+mean1 <- vector()
+mean2 <- vector()
+for(y in 1:60){
+  x <- c(y-60)*0.2 # from looking at the means, we know they differ no more than |13|. So we will start by equalising the means and building up the difference as the simulations go along 
+  for(i in 1:N.sim){
+    X1 <- rnorm(n = length(variable1),
+                mean = mean(variable1),
+                sd = sd(variable1))
+    X2 <- rnorm(n = length(variable2),
+                mean = mean(variable2)+x,  #here we start by comparing a 0 difference µ=µ to a difference of µ+50
+                sd = sd(variable2))
+    test <- t.test(X1, X2, alternative = 'less', var.equal = FALSE)
+    pdif[i] <- test$p.value
+    mean1[i] <- mean(X1)
+    mean2[i] <- mean(X2)
+  }
+  power[y]<-mean(pdif < 0.05)
+  meandif[y]<-mean(mean1)-mean(mean2)
+ }
+return(cbind(meandif,power))
+}
+
+dbpend_power_sim <- power_f_delta(10000, treat1$dbp_end, treat2$dbp_end)
+
+dbpdif_power_sim <-power_f_delta(10000, treat1$dbpdif, treat2$dbpdif)
+
+
+plot(dbpend_power_sim, type="l",col='red',
+     xlab = "Difference in means (observed mean difference of simulations)",
+     main = "Comparative power",
+      ylab = "Power")
+lines(dbpdif_power_sim, col='green')
+
+```
+Conclusion 1: From the simulation we can clearly see that dbpdif has more power
