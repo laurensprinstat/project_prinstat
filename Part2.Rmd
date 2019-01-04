@@ -193,10 +193,12 @@ Approx power approaching 100% or >99.9%
 [1] 0.050319
 Type 1 error rate of approx 5%?
 
-
 # Something
 
 ```{r}
+n_p <- summary(data12$treatment)[["Placebo"]]
+n_t <- summary(data12$treatment)[["Treatment 1"]]
+
 # observed means
 mean_p_end <- mean(data12[data12$treatment == "Placebo",]$dbp_end)
 mean_t_end <- mean(data12[data12$treatment == "Treatment 1",]$dbp_end)
@@ -205,8 +207,11 @@ mean_p_dif <- mean(data12[data12$treatment == "Placebo",]$dbpdif)
 mean_t_dif <- mean(data12[data12$treatment == "Treatment 1",]$dbpdif)
 dif_dif <- mean_p_dif - mean_t_dif
 
+# T-test settings
+var_eq <- FALSE
+
 # Permutation settings
-n_sim <- 100000
+n_sim <- 10000
 tt_end <- rep(NA, n_sim)
 tt_dif <- rep(NA, n_sim)
 pdata <- data12
@@ -215,8 +220,8 @@ set.seed(1991)
 # Permutation
 for(i in 1:n_sim){
   pdata$treatment <- sample(pdata$treatment)
-  tt_end[i] <- t.test(dbp_end ~ treatment, data=pdata, alternative="less", var.equal=FALSE)$statistic
-  tt_dif[i] <- t.test(dbpdif ~ treatment, data=pdata, alternative="less", var.equal=FALSE)$statistic
+  tt_end[i] <- t.test(dbp_end ~ treatment, data=pdata, alternative="less", var.equal=var_eq)$statistic
+  tt_dif[i] <- t.test(dbpdif ~ treatment, data=pdata, alternative="less", var.equal=var_eq)$statistic
 }
 
 # Whilutation settings
@@ -224,16 +229,19 @@ p_end <- 1
 p_dif <- 1
 adj = 0
 
+data_w <- data12
 # Whilutation until p-value of 0.05
 while (min(c(p_end, p_dif)) > 0.05) {
   # Difference in means
   adj <- round(adj + 0.01, 2)
   # Equalize means and add difference
   adj_t_end <- data12[data12$treatment == "Treatment 1",]$dbp_end + dif_end - adj
+  placebo_end <- data12[data12$treatment == "Placebo",]$dbp_end
   adj_t_dif <- data12[data12$treatment == "Treatment 1",]$dbpdif + dif_dif - adj
+  placebo_dif <- data12[data12$treatment == "Placebo",]$dbpdif
   # Adjusted means t-test
-  tt_obs_end <- t.test(adj_t_end, r_p_end, alternative="less", var.equal=FALSE)$statistic
-  tt_obs_dif <- t.test(adj_t_dif, r_p_dif, alternative="less", var.equal=FALSE)$statistic
+  tt_obs_end <- t.test(adj_t_end, placebo_end, alternative="less", var.equal=var_eq)$statistic
+  tt_obs_dif <- t.test(adj_t_dif, placebo_dif, alternative="less", var.equal=var_eq)$statistic
   # P-value
   p_end <- mean(tt_end < tt_obs_end)
   p_dif <- mean(tt_dif < tt_obs_dif)
@@ -244,9 +252,9 @@ paste("P-value final measure:", p_end)
 paste("P-value difference dbp5-3:", p_dif)
 ```
 
-[1] "Smallest detected difference: 0.86"
-[1] "P-value final measure: 0.06463"
-[1] "P-value difference dbp5-3: 0.04967"
+[1] "Smallest detected difference: 3.14"
+[1] "P-value final measure: 0.0591"
+[1] "P-value difference dbp5-3: 0.0481"
 
 ```{r}
 # Whilutation settings
@@ -263,9 +271,12 @@ while (adj <= adj_max && continue) {
   # Equalize means and set difference
   adj_t_end <- data12[data12$treatment == "Treatment 1",]$dbp_end + dif_end - adj
   adj_t_dif <- data12[data12$treatment == "Treatment 1",]$dbpdif + dif_dif - adj
+  placebo_end <- data12[data12$treatment == "Placebo",]$dbp_end
+  placebo_dif <- data12[data12$treatment == "Placebo",]$dbpdif
   # Adjusted difference observed value
-  tt_obs_end <- t.test(adj_t_end, r_p_end, alternative="less", var.equal=FALSE)$statistic
-  tt_obs_dif <- t.test(adj_t_dif, r_p_dif, alternative="less", var.equal=FALSE)$statistic
+  tt_obs_end <- t.test(adj_t_end, placebo_end, alternative="less", var.equal=var_eq)$statistic
+  tt_obs_dif <- t.test(adj_t_dif, placebo_dif, alternative="less", var.equal=var_eq)$statistic
+  #test_0 <- t.test(r_treat_0, r_placebo_0, alternative="greater", var.equal=FALSE)
   # P-value
   p_end[j] <- mean(tt_end < tt_obs_end)
   p_dif[j] <- mean(tt_dif < tt_obs_dif)
@@ -284,24 +295,23 @@ abline(0.05, 0, col="red")
 axis(side = 1, at=seq(0, 700, 100), labels=seq(0, 7, 1))
 ```
 
-
 ```{r}
 sd_p_dif <- sd(data12[data12$treatment == "Placebo",]$dbpdif)
 sd_t_dif <- sd(data12[data12$treatment == "Treatment 1",]$dbpdif)
 
-n_sim <- 100000
+n_sim <- 1000000
 r_power <- rep(NA, n_sim)
 r_type1 <- rep(NA, n_sim)
 set.seed(1991)
 
 for(i in 1:n_sim){
-  r_placebo <- rnorm(n=n_placebo, mean=mean_p_dif, sd=sd_p_dif)
-  r_treat <- rnorm(n=n_treatment, mean=mean_t_dif + dif_dif - adj, sd=sd_t_dif)
-  r_placebo_0 <- rnorm(n=n_placebo, mean=0, sd=sd_placebo)
-  r_treat_0 <- rnorm(n=n_treatment, mean=0, sd=sd_treatment)
+  r_placebo <- rnorm(n=n_p, mean=mean_p_dif, sd=sd_p_dif)
+  r_treat <- rnorm(n=n_t, mean=mean_t_dif + dif_dif - adj, sd=sd_t_dif)
+  r_placebo_0 <- rnorm(n=n_p, mean=0, sd=sd_p_dif)
+  r_treat_0 <- rnorm(n=n_t, mean=0, sd=sd_t_dif)
   # One sided pooled t-test
-  test <- t.test(r_treat, r_placebo, alternative="less", var.equal=FALSE)
-  test_0 <- t.test(r_treat_0, r_placebo_0, alternative="greater", var.equal=FALSE)
+  test <- t.test(r_treat, r_placebo, alternative="less", var.equal=var_eq)
+  test_0 <- t.test(r_treat_0, r_placebo_0, alternative="greater", var.equal=var_eq)
   r_power[i] <- test$p.value
   r_type1[i] <- test_0$p.value
 }
@@ -310,6 +320,3 @@ mean(r_power < 0.05)
 # Type 1
 mean(r_type1 < 0.05)
 ```
-
-Power 0.98838
-Type 1 0.04976
