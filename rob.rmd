@@ -122,9 +122,9 @@ simqq(treat2$dbpdif)
 #start actual power simulations
 
 #(dbp5) 1 sided testing, treatment 1 bp mean is expected to be below (smaller) treat 2 
-'H0' ->  'mean(treat1$dbp_end)' = 'mean(treat2$dbp_end)' ; 'HA' ->  'mean(treat1$dbp_end)' < 'mean(treat2$dbp_end)'
+#'H0' ->  'mean(treat1$dbp_end)' = 'mean(treat2$dbp_end)' ; 'HA' ->  'mean(treat1$dbp_end)' < 'mean(treat2$dbp_end)'
 #(dbp_dif) 1 sided testing, the diff mean in treat 1 is expected to be more negative (smaller) than in treat 2
-'H0' ->  'mean(treat1$dbp_dif)' = 'mean(treat2$dbp_dif)' ; 'HA' ->  'mean(treat1$dbp_dif)' < 'mean(treat2$dbp_dif)'
+#'H0' ->  'mean(treat1$dbp_dif)' = 'mean(treat2$dbp_dif)' ; 'HA' ->  'mean(treat1$dbp_dif)' < 'mean(treat2$dbp_dif)'
 
 #There are 2 ways we will look at to influence power
 #1 look at the difference value
