@@ -193,6 +193,33 @@ Approx power approaching 100% or >99.9%
 [1] 0.050319
 Type 1 error rate of approx 5%?
 
+#(TS) Dit was mijn idee van vraag 3
+```{R}
+#dbp_end and dbp_dif are simulated simultaneously, but dependent on each other, under H0 and both are tested for a significant effect.
+#For each simulation, the lowest p-value of the two
+p_min <- vector(, 10000)
+p_end <- vector(, 10000)
+p_dif <- vector(, 10000)
+set.seed(2242)
+for(i in 1 : 10000) {
+  sim_end1 <- rnorm(n1, mu_end, sd_end1)
+  sim_end2 <- rnorm(n2, mu_end, sd_end2) #the means in both groups are equal to simulate H0
+  sim_base1 <- rnorm(n1, mu_base, sd_base1)
+  sim_base2 <- rnorm(n2, mu_base, sd_base2)
+  sim_dif1 <- sim_end1 - sim_base1 #sim_dif is calculated as a function of sim_end to simulate dependence
+  sim_dif2 <- sim_end2 - sim_base2
+  t_test_end <- t.test(sim_end1, sim_end2, alternative = "less", mu = 0, paired = F, var.equal = F)
+  t_test_dif <- t.test(sim_dif1, sim_dif2, alternative = "less", mu = 0, paired = F, var.equal = F)
+  p_end[i] <- t_test_end$p.value
+  p_dif[i] <- t_test_dif$p.value
+  p_min[i] <- min(c(t_test_end$p.value, t_test_dif$p.value))
+}
+#Type I error rate is well-controlled for the individual variables
+mean(p_end < 0.05)
+mean(p_dif < 0.05)
+#However, the Type I error rate is too high when the lowest p-value of the two is used.
+mean(p_min < 0.05)
+```
 # Something
 
 ```{r}
