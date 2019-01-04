@@ -197,6 +197,11 @@ Type 1 error rate of approx 5%?
 ```{R}
 #dbp_end and dbp_dif are simulated simultaneously, but dependent on each other, under H0 and both are tested for a significant effect.
 #For each simulation, the lowest p-value of the two
+mu_end <- mean(data12$dbp_end)
+mu_base <- mean(data12$dbp3)
+sd_base1 <- sd(data12[data12$treatment == "Treatment 1",]$dbp3)
+sd_base2 <- sd(data12[data12$treatment == "Placebo",]$dbp3)
+
 p_min <- vector(, 10000)
 p_end <- vector(, 10000)
 p_dif <- vector(, 10000)
