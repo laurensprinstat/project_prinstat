@@ -478,7 +478,7 @@ mean(r_type1 < 0.05)
 ```
 
 ###################################################
-# Q 4                                            #
+# Q 4  Power calc with bonfer correction          #
 ###################################################
 
 ```{R}
@@ -515,4 +515,56 @@ mean(p_end < 0.05)
 mean(p_dif < 0.05)
 #However, the Type I error rate is too high when the lowest p-value of the two is used.
 mean((p_min * 2) < 0.05)
+```
+```{R}
+#dbp_end and dbp_dif are simulated simultaneously, but dependent on each other, under H0 and both are tested for a significant effect.
+#For each simulation, the lowest p-value of the two
+data1 <- data[data$treatment == "Treatment 1",]
+data2 <- data[data$treatment == "Placebo",]
+
+n1<- length(data1)
+n2<- length(data2)
+
+mean_end1 <- mean(data1$dbp_end)
+mean_end2 <- mean(data2$dbp_end)
+
+mean_dif1 <- mean(data1$dbpdif)
+mean_dif2 <- mean(data2$dbpdif)
+
+sd_end1 <- sd(data1$dbp_end)
+sd_end2 <- sd(data2$dbp_end)
+
+sd_dif1 <- sd(data1$dbpdif)
+sd_dif2 <- sd(data2$dbpdif)
+
+
+p_min <- vector()
+p_end <- vector()
+p_dif <- vector()
+p_and <- vector()
+
+set.seed(2242)
+for(i in 1 : 10000) {
+  sim_end1 <- rnorm(n1, mean_end1, sd_end1)
+  sim_end2 <- rnorm(n2, mean_end2, sd_end2) #the means in both groups are equal to simulate H0
+  sim_base1 <- rnorm(n1, mean_dif1, sd_dif1)
+  sim_base2 <- rnorm(n2, mean_dif1, sd_dif1)
+  sim_dif1 <- sim_end1 - sim_base1 #sim_dif is calculated as a function of sim_end to simulate dependence
+  sim_dif2 <- sim_end2 - sim_base2
+  t_test_end <- t.test(sim_end1, sim_end2, alternative = "less", mu = 0, paired = F, var.equal = F)
+  t_test_dif <- t.test(sim_dif1, sim_dif2, alternative = "less", mu = 0, paired = F, var.equal = F)
+  #p_end[i] <- t_test_end$p.value
+  #p_dif[i] <- t_test_dif$p.value
+  p_end[i] <- p.adjust(t_test_end$p.value, method="bonferroni", n=2)
+  p_dif[i] <- p.adjust(t_test_dif$p.value, method="bonferroni", n=2)
+  #p_min[i] <- min(c(t_test_end$p.value, t_test_dif$p.value))
+  #p_and[i] <- max(c(t_test_end$p.value, t_test_dif$p.value))
+  p_min[i] <- min(c(t_test_end$p.value, method="bonferroni", n=2,
+                    t_test_dif$p.value, method="bonferroni", n=2))
+}
+
+#However, the Type I error rate is too high when the lowest p-value of the two is used.
+mean(p_min < 0.05)
+
+
 ```
