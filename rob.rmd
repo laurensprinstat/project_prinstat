@@ -212,3 +212,4 @@ powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, 1)
 powertest(alpha = 0.05, treat1$dbpdif, treat2$dbpdif,   -1)
 powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, -1)
 ```
+It becomes clear that for hard differences(2,3,4) the dbpdif has more merit.
