@@ -55,16 +55,18 @@ data2 <- data[data$treatment == "Placebo",]
 
 In the code, trailing 1's are a reference to "Treatment 1" and 2's to "Placebo".
 
+## Exploration and preparation
+
 ```{r}
 # Amount of observations
 n <- nrow(data12)
 n1 <- summary(data12$treatment)[["Treatment 1"]]
 n2 <- summary(data12$treatment)[["Placebo"]]
+```
 
-##############################
-# Simulating the dbpdif data #
-##############################
+Simulating the dbpdif data 
 
+```{r}
 # Checking normality
 qqnorm(data1$dbpdif); qqline(data1$dbpdif)
 ## Skewed to the left?
@@ -93,11 +95,11 @@ qqnorm(rdif2)
 qqline(rdif2)
 ## QQplots from data generated randomly from normal distributions
 ## show similar deviations as the QQplots of the data
+```
 
-###############################
-# Simulating the dbp_end data #
-###############################
+Simulating the dbp_end data
 
+```{r}
 # Checking normality
 qqnorm(data1$dbp_end); qqline(data1$dbp_end)
 #1 outlier to the left?
@@ -120,11 +122,11 @@ qqnorm(rend1); qqline(rend1)
 qqnorm(rend2); qqline(rend2)
 ## QQplots from data generated randomly from normal distributions
 ## show similar deviations as the QQplots of the data
+```
 
-###############
-# Permutation #
-###############
+## Permutation with relative differences
 
+```{r}
 ## 10000 simulations for each of 41 differences in means, for both
 ## dbpdif and dbp_end. These are plotted together for comparison
 
@@ -170,6 +172,63 @@ axis(side=2, at=seq(from=0, to=1, by=0.2), labels=seq(from=0, to=100, by=20))
 legend(33.77, 1.036, legend=c("dbp_dif", "dbp_end"),
        col=c("blue", "red"), lty=1:2, cex=1.2)
 ```
+
+dbp_end has more power when adjusting means by a relative difference
+
+## Permutation with absolute differences
+
+```{r}
+# Power simulations
+power_f_delta <- function(N.sim, variable1, variable2){
+  pdif <- vector()
+  power <- vector()
+  meandif <- vector()
+  mean1 <- vector()
+  mean2 <- vector()
+  for(y in 1:60){
+    ## By observation, the means differ no more than |13|. Therefore the
+    ## means are first equalized and then increased step by step
+    x <- c(y-60)*0.2
+    for(i in 1:N.sim){
+      # Treatment
+      X1 <- rnorm(n=length(variable1),
+                  mean=mean(variable2) + x, # Adjusted placebo mean
+                  sd=sd(variable1))
+      # Placebo
+      X2 <- rnorm(n=length(variable2),
+                  mean=mean(variable2),
+                  sd=sd(variable2))
+      # Welch T-test
+      test <- t.test(X1, X2, alternative='less', var.equal=FALSE)
+      # Store p-value
+      pdif[i] <- test$p.value
+      # Store means
+      mean1[i] <- mean(X1)
+      mean2[i] <- mean(X2)
+    }
+    power[y] <- mean(pdif < 0.05)
+    meandif[y] <- mean(mean1) - mean(mean2)
+  }
+  return(cbind(meandif,power))
+}
+
+# Amount of simulations
+n.sim <- 10000
+
+# Permutate dbp_end
+dbpend_power_sim <- power_f_delta(n.sim, data1$dbp_end, data2$dbp_end)
+# permutate dbp_dif
+dbpdif_power_sim <- power_f_delta(n.sim, data1$dbpdif, data2$dbpdif)
+
+# Plot the result
+plot(dbpend_power_sim, type="l",col='red',
+     xlab="Difference in means (observed mean difference of simulations)",
+     main="Comparative power, fixed Delta",
+     ylab="Power")
+lines(dbpdif_power_sim, col='blue')
+```
+
+dbp_dif has more power when adjusting means by an absolute difference.
 
 ##################
 #Question 2 (TS) #
