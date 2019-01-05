@@ -169,9 +169,9 @@ dbpdif_power_sim <-power_f_delta(1000, treat1$dbpdif, treat2$dbpdif)
 
 plot(dbpend_power_sim, type="l",col='red',
      xlab = "Difference in means (observed mean difference of simulations)",
-     main = "Comparative power",
+     main = "Comparative power, fixed Delta",
       ylab = "Power")
-lines(dbpdif_power_sim, col='green')
+lines(dbpdif_power_sim, col='blue')
 
 ```
 Conclusion 1: From the simulation plot we can clearly see that dbpdif has more power
