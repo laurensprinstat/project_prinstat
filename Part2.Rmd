@@ -39,7 +39,7 @@ data$treatment <- as.factor(mapvalues(
 data$sex <- as.factor(mapvalues(data$sex, c(0, 1), c("Female", "Male")))
 # 80% adherence rule
 data <- data[data$comp >= 0.8,]
-##TS: don't we remove the patient with a blood pressure of 66?
+# outlier removal
 data=data[data$dbp3 != 66,]
 # Subset of treatment 1 and the placebo
 data12 <- data[data$treatment != "Treatment 3",]
