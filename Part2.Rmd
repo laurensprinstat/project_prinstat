@@ -478,7 +478,7 @@ mean(r_type1 < 0.05)
 ```
 
 ###################################################
-# 4  Power calc with bonfer correction          #
+# 4  Power                                        #
 ###################################################
 
 ```{R}
@@ -516,6 +516,10 @@ mean(p_dif < 0.05)
 #However, the Type I error rate is too high when the lowest p-value of the two is used.
 mean((p_min * 2) < 0.05)
 ```
+###################################################
+# 4  Power calc with bonfer correction          #
+###################################################
+
 ```{R}
 #dbp_end and dbp_dif are simulated simultaneously, but dependent on each other, under H0 and both are tested for a significant effect.
 #For each simulation, the lowest p-value of the two
