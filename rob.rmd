@@ -93,7 +93,8 @@ var.test(treat1$dbp_end, treat2$dbp_end) #doubtfull evidence, but a ratio of 0.6
 meansd <- function(variable){
   return(c(
     mean(variable),
-    sd(variable)
+    sd(variable),
+    length(variable)
     ))
 }
 
@@ -161,9 +162,9 @@ for(y in 1:60){
 return(cbind(meandif,power))
 }
 
-dbpend_power_sim <- power_f_delta(10000, treat1$dbp_end, treat2$dbp_end)
+dbpend_power_sim <- power_f_delta(1000, treat1$dbp_end, treat2$dbp_end)
 
-dbpdif_power_sim <-power_f_delta(10000, treat1$dbpdif, treat2$dbpdif)
+dbpdif_power_sim <-power_f_delta(1000, treat1$dbpdif, treat2$dbpdif)
 
 
 plot(dbpend_power_sim, type="l",col='red',
@@ -173,10 +174,9 @@ plot(dbpend_power_sim, type="l",col='red',
 lines(dbpdif_power_sim, col='green')
 
 ```
-Conclusion 1: From the simulation we can clearly see that dbpdif has more power
+Conclusion 1: From the simulation plot we can clearly see that dbpdif has more power
 
-
-Let's make some power calculations and compare
+2. Use analytical calculations to develop insights into when and why it is preferable 
 ```{r}
 ##Analytical approach to the power of the t-test
 
@@ -216,7 +216,103 @@ powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, -1)
 print(1 - pt(t.alpha, df = n - 2, ncp = 4))
 print(1 - pt(t.alpha, df = n - 2, ncp = 2))
 #NCP -> lambda_dif <- delta_dif /  sqrt(var(variable1)/n1 + var(variable2)/n2)
+
+#'The smaller the variance, the higher the power.
+#'Lets optimalise the variance
+
+#create sigmas
+sigmatest <- vector()
+
+sigma <- 12
+for(r in 1:500){
+  sigma <- sigma-(0.001*r)
+  sigmatest[r] <- sigma
+}
+sigmatest <- sigmatest[sigmatest>0]
+
+sigma.test <- vector()
+pval.sim <- vector()
+
+#diff 3
+ for(i in 1:length(sigmatest)){
+   X1<-rnorm(39, 0, sigmatest[i])
+   X2<-rnorm(44, 3, sigmatest[i])
+   sigma.test[i] <- sigmatest[i]
+   pval.sim[i] <- t.test(X1, X2, alternative = 'less', var.equal = TRUE)$p.value
+  }
+plot(sigmatest, pval.sim)
+abline(h = 0.05, col= 'red')
+
+#diff 1
+ for(i in 1:length(sigmatest)){
+   X1<-rnorm(39, 0, sigmatest[i])
+   X2<-rnorm(44, 1, sigmatest[i])
+   sigma.test[i] <- sigmatest[i]
+   pval.sim[i] <- t.test(X1, X2, alternative = 'less', var.equal = TRUE)$p.value
+  }
+plot(sigmatest, pval.sim)
+abline(h = 0.05, col= 'red')
+
+#This plot shows again that smaller 
+
 ```
 
 It becomes clear that for hard differences(2,3,4) the dbpdif has more merit.
 When the NCP goes up, so does the power. If we test for the same difference, the differentiating factor in dbp_end and dbp_diff is the variance. We see the dbp_dif having slightly less variance, so the Delta gets divided by a smaller number -> higher ncp -> higher power.
+Because the difference in dbp5 and dbpdiff is not a constant, but a random variable(the dbp of subject)
+
+
+
+
+3. What would be the type 1 error rate, using the analytical approach?
+We can conclude that the smallest variance would lead to the largest power
+Let's look at the true error rate for a number of variances
+The true error rate is the proportion of observed p<0.05 for a random distribution
+```{r}
+#create sigmas
+sigmatest <- vector()
+
+sigma <- 12
+for(r in 1:5000){
+  sigma <- sigma-(0.0001*r)
+  sigmatest[r] <- sigma
+}
+sigmatest <- sigmatest[sigmatest>0]
+
+sigma.test <- vector()
+pval.sim <- vector()
+
+sigmat <- vector()
+true0 <- vector()
+
+ for(i in 1:length(sigmatest)){
+   sigmat <- sigmatest[i]
+   for(y in 1:1000){
+   X1<-rnorm(39, 0, sigmat)
+   X2<-rnorm(44, 0, sigmat)
+   pval.sim[y] <- t.test(X1, X2, alternative = 'less', var.equal = TRUE)$p.value
+   #mean(pval.sim<0.05))
+  }
+   true0[i]  <- mean(pval.sim<0.05)
+   sigmat[i] <- sigmat
+ } 
+
+plot(sigmatest, true0)
+cor(sigmatest, true0)
+
+abline(h = 0.05, col= 'red')
+
+```
+
+The simulation above shows that the 0.05 treshold is not guaranteed purely looking at the variance. As to be expected, the p-value acts random
+
+4. How to ensure that the right sign level is attained?
+Knowing that the p-value behaves randomly when using random samples, we should keep in mind that a single observation does not give conclusive answers. If the variance is less, we have more chance of a more extreme p-value and a higher power.
+Therefore if we have observed a smaller p-value during a single analysis, it is worth looking into the variance and how this smaller p-value holds up during simulation if the variable with larger p-value has a smaller variance.
+
+4
+```{r}
+print('to do: calculate the p-values for dif and 5 single time, see which variance is smaller, make loop 10000 with same Delta and smallest variance should have best p-value')
+```
+
+
