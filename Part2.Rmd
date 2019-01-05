@@ -151,6 +151,26 @@ lambda_end <- delta_end /  sqrt(var(data$dbp_end[data$treatment == "Treatment 1"
 #Non-parametric alternative: The l (lambda) is much too large, this doesn't work
 l_dif.2 <- sqrt((12 * n1 * n2) / (n + 1)) * delta_dif.2
 1 - pt(t.alpha, df = n - 2, ncp = l_dif.2)
+
+######
+#RB power function to compare hard differences
+######
+powertest <- function(alpha = 0.05, variable1, variable2, delta_dif){
+n1 <-length(variable1)
+n2 <- length(variable2)
+n <- n1+n2
+#Alpha is not divided by 2, as we test one-sided
+t.alpha <- qt(1-alpha, df = n - 2)
+#With dbpdif, where the difference between the groups is 42.5% of the observed difference
+lambda_dif <- delta_dif /  sqrt(var(variable1)/n1 + var(variable2)/n2)
+print(1 - pt(t.alpha, df = n - 2, ncp = lambda_dif))
+}
+
+powertest(alpha = 0.05, data$dbpdif[data$treatment == "Treatment 1"], data$dbpdif[data$treatment == "Placebo"], delta_dif = 3)
+powertest(alpha = 0.05, data$dbp_end[data$treatment == "Treatment 1"], data$dbp_end[data$treatment == "Placebo"], delta_dif = 3)
+
+powertest(alpha = 0.05, treat1$dbpdif, treat2$dbpdif,   5)
+powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, 5)
 ```
 
 ###################
