@@ -338,7 +338,7 @@ mean(p_min < 0.05)
 
 ```{R}
 #dbp_end and dbp_dif are simulated simultaneously, but dependent on each other, under H0 and both are tested for a significant effect.
-#For each simulation, the lowest p-value of the two
+#For each simulation, the lowest p-value of the two is used, but corrected according to the Bonferroni correction.
 mu_end <- mean(data12$dbp_end)
 mu_base <- mean(data12$dbp3)
 sd_base1 <- sd(data12[data12$treatment == "Treatment 1",]$dbp3)
