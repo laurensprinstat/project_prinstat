@@ -211,5 +211,12 @@ powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, 1)
 
 powertest(alpha = 0.05, treat1$dbpdif, treat2$dbpdif,   -1)
 powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, -1)
+
+#Check the effect of variance
+print(1 - pt(t.alpha, df = n - 2, ncp = 4))
+print(1 - pt(t.alpha, df = n - 2, ncp = 2))
+#NCP -> lambda_dif <- delta_dif /  sqrt(var(variable1)/n1 + var(variable2)/n2)
 ```
+
 It becomes clear that for hard differences(2,3,4) the dbpdif has more merit.
+When the NCP goes up, so does the power. If we test for the same difference, the differentiating factor in dbp_end and dbp_diff is the variance. We see the dbp_dif having slightly less variance, so the Delta gets divided by a smaller number -> higher ncp -> higher power.
