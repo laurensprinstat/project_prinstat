@@ -69,9 +69,7 @@ Simulating the dbpdif data
 ```{r}
 # Checking normality
 qqnorm(data1$dbpdif); qqline(data1$dbpdif)
-## Skewed to the left?
 qqnorm(data2$dbpdif); qqline(data2$dbpdif)
-## Short tail on the right?
 
 # Testing the homogeneity of variances
 var.test(data1$dbpdif, data2$dbpdif)
@@ -102,9 +100,7 @@ Simulating the dbp_end data
 ```{r}
 # Checking normality
 qqnorm(data1$dbp_end); qqline(data1$dbp_end)
-#1 outlier to the left?
 qqnorm(data2$dbp_end); qqline(data2$dbp_end)
-#Short tail on the left?
 #The dbp_end seems to show fewer deviations from normality than dbpdif
 
 # Observed means
