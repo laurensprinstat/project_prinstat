@@ -9,14 +9,14 @@ output:
 
 # Preparation
 
-```{r}
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
 # Used libraries
 library(plyr)
 ```
 
 Importing and cleaning the data
 
-```{r}
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
 # Read in data
 data <- read.table("bptrial.txt", header=TRUE, sep=",", dec=".")
 original <- data
@@ -57,7 +57,7 @@ In the code, trailing 1's are a reference to "Treatment 1" and 2's to "Placebo".
 
 ## Exploration and preparation
 
-```{r}
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
 # Amount of observations
 n <- nrow(data12)
 n1 <- summary(data12$treatment)[["Treatment 1"]]
@@ -66,7 +66,7 @@ n2 <- summary(data12$treatment)[["Placebo"]]
 
 Simulating the dbpdif data 
 
-```{r}
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
 # Checking normality
 qqnorm(data1$dbpdif); qqline(data1$dbpdif)
 qqnorm(data2$dbpdif); qqline(data2$dbpdif)
@@ -97,7 +97,7 @@ qqline(rdif2)
 
 Simulating the dbp_end data
 
-```{r}
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
 # Checking normality
 qqnorm(data1$dbp_end); qqline(data1$dbp_end)
 qqnorm(data2$dbp_end); qqline(data2$dbp_end)
@@ -122,7 +122,7 @@ qqnorm(rend2); qqline(rend2)
 
 ## Simulation with relative differences
 
-```{r}
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
 ## 10000 simulations for each of 41 differences in means, for both
 ## dbpdif and dbp_end. These are plotted together for comparison
 
@@ -173,7 +173,7 @@ dbp_end has more power when adjusting means by a relative difference
 
 ## Simulation with absolute differences
 
-```{r}
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
 # Power simulations
 power_f_delta <- function(N.sim, variable1, variable2){
   pdif <- vector()
@@ -232,7 +232,7 @@ dbp_dif has more power when adjusting means by an absolute difference.
 
 ## Relative difference in means
 
-```{r}
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
 alpha <- 0.05
 n <- n1 + n2
 # Alpha is not divided by 2, as we test one-sided
@@ -255,7 +255,7 @@ lambda_end <- delta_end / sqrt(var(data1$dbp_end)/n1 + var(data2$dbp_end)/n2)
 
 ## Absolute difference in means
 
-```{r}
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
 # power function to compare hard differences
 powertest <- function(alpha=0.05, variable1, variable2, delta_dif){
   n1 <-length(variable1)
@@ -282,7 +282,7 @@ powertest(alpha=0.05, data1$dbp_end, data2$dbp_end, delta_dif=5)
 
 dbp_end and dbp_dif are simulated simultaneously, but dependent on each other, under H0 and both are tested for a significant effect. For each simulation, the lowest p-value of the two is taken.
 
-```{R}
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
 # Means and SD
 mu_end <- mean(data12$dbp_end)
 mu_base <- mean(data12$dbp3)
@@ -328,44 +328,6 @@ mean(p_min < 0.05)
 ## p-value of the two is used.
 ```
 
-###################################################
-# 4  Power                                        #
-###################################################
-
-```{R}
-#dbp_end and dbp_dif are simulated simultaneously, but dependent on each other, under H0 and both are tested for a significant effect.
-#For each simulation, the lowest p-value of the two is used, but corrected according to the Bonferroni correction.
-mu_end <- mean(data12$dbp_end)
-mu_base <- mean(data12$dbp3)
-sd_base1 <- sd(data12[data12$treatment == "Treatment 1",]$dbp3)
-sd_base2 <- sd(data12[data12$treatment == "Placebo",]$dbp3)
-
-p_min <- vector(, 10000)
-p_end <- vector(, 10000)
-p_dif <- vector(, 10000)
-p_and <- vector(, 10000)
-set.seed(2242)
-for(i in 1 : 10000) {
-  sim_end1 <- rnorm(n1, mu_end, sd_end1)
-  sim_end2 <- rnorm(n2, mu_end, sd_end2) #the means in both groups are equal to simulate H0
-  sim_base1 <- rnorm(n1, mu_base, sd_base1)
-  sim_base2 <- rnorm(n2, mu_base, sd_base2)
-  sim_dif1 <- sim_end1 - sim_base1 #sim_dif is calculated as a function of sim_end to simulate dependence
-  sim_dif2 <- sim_end2 - sim_base2
-  t_test_end <- t.test(sim_end1, sim_end2, alternative = "less", mu = 0, paired = F, var.equal = F)
-  t_test_dif <- t.test(sim_dif1, sim_dif2, alternative = "less", mu = 0, paired = F, var.equal = F)
-  p_end[i] <- t_test_end$p.value
-  p_dif[i] <- t_test_dif$p.value
-  #p_end[i] <- p.adjust(t_test_end$p.value, method="bonferroni", n=2)
-  #p_dif[i] <- p.adjust(t_test_dif$p.value, method="bonferroni", n=2)
-  p_min[i] <- min(c(t_test_end$p.value, t_test_dif$p.value))
-  p_and[i] <- max(c(t_test_end$p.value, t_test_dif$p.value))
-}
-
-#Corrected Type I error rate:
-mean((p_min * 2) < 0.05)
-```
-
 ############################
 # 4. Bonferroni Correction #
 ############################
@@ -374,13 +336,13 @@ mean((p_min * 2) < 0.05)
 
 Applying Bonferroni correction based on the previous result
 
-```{r}
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
 mean((p_min * 2) < 0.05)
 ```
 
 ## Calculate power
 
-```{R}
+```{r message=FALSE, warning=FALSE, paged.print=FALSE, results='hide'}
 # Preparation
 data1 <- data[data$treatment == "Treatment 1",]
 data2 <- data[data$treatment == "Placebo",]
@@ -429,5 +391,4 @@ for(i in 1 : 10000) {
 # Power
 mean(p_min < 0.05)
 ```
-
 
