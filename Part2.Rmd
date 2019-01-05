@@ -124,7 +124,7 @@ qqnorm(rend2); qqline(rend2)
 ## show similar deviations as the QQplots of the data
 ```
 
-## Permutation with relative differences
+## Simulation with relative differences
 
 ```{r}
 ## 10000 simulations for each of 41 differences in means, for both
@@ -175,7 +175,7 @@ legend(33.77, 1.036, legend=c("dbp_dif", "dbp_end"),
 
 dbp_end has more power when adjusting means by a relative difference
 
-## Permutation with absolute differences
+## Simulation with absolute differences
 
 ```{r}
 # Power simulations
@@ -215,9 +215,9 @@ power_f_delta <- function(N.sim, variable1, variable2){
 # Amount of simulations
 n.sim <- 10000
 
-# Permutate dbp_end
+# Simulate dbp_end
 dbpend_power_sim <- power_f_delta(n.sim, data1$dbp_end, data2$dbp_end)
-# permutate dbp_dif
+# Simulate dbp_dif
 dbpdif_power_sim <- power_f_delta(n.sim, data1$dbpdif, data2$dbpdif)
 
 # Plot the result
