@@ -45,8 +45,8 @@ levels(data12$treatment) <- c("Treatment 1", "Placebo", NA)
 ##################
 #Question 1 (TS) #
 ##################
-n1 <- summary(data$treatment)[[1]]
-n2 <- summary(data$treatment)[[2]]
+n1 <- summary(data$treatment)[["Treatment 1"]]
+n2 <- summary(data$treatment)[["Placebo"]]
 
 #Simulating the dbpdif data
 qqnorm(data$dbpdif[data$treatment == "Treatment 1"]) ; qqline(data$dbpdif[data$treatment == "Treatment 1"])
