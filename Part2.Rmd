@@ -408,7 +408,7 @@ p_dif <- vector()
 p_and <- vector()
 # Set seed for reproducibility
 set.seed(2242)
-# Permutation
+# Simulate
 for(i in 1 : 10000) {
   # The means in both groups are equal to simulate H0
   # dbp_end
