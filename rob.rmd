@@ -176,6 +176,7 @@ lines(dbpdif_power_sim, col='green')
 Conclusion 1: From the simulation we can clearly see that dbpdif has more power
 
 
+Let's make some power calculations and compare
 ```{r}
 ##Analytical approach to the power of the t-test
 
@@ -190,8 +191,24 @@ lambda_dif <- delta_dif /  sqrt(var(variable1)/n1 + var(variable2)/n2)
 print(1 - pt(t.alpha, df = n - 2, ncp = lambda_dif))
 }
 
+powertest(alpha = 0.05, treat1$dbpdif, treat2$dbpdif,   6)
+powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, 6)
+
+powertest(alpha = 0.05, treat1$dbpdif, treat2$dbpdif,   5)
+powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, 5)
+
 powertest(alpha = 0.05, treat1$dbpdif, treat2$dbpdif, 4.141273)
 powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, 4.141273)
 
+powertest(alpha = 0.05, treat1$dbpdif, treat2$dbpdif,   3)
+powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, 3)
 
+powertest(alpha = 0.05, treat1$dbpdif, treat2$dbpdif,   2)
+powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, 2)
+
+powertest(alpha = 0.05, treat1$dbpdif, treat2$dbpdif,   1)
+powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, 1)
+
+powertest(alpha = 0.05, treat1$dbpdif, treat2$dbpdif,   -1)
+powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, -1)
 ```
