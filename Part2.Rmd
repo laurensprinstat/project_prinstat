@@ -276,8 +276,8 @@ powertest(alpha=0.05, data1$dbpdif, data2$dbpdif, delta_dif=3)
 powertest(alpha=0.05, data1$dbp_end, data2$dbp_end, delta_dif=3)
 
 # Absolute difference of 5
-powertest(alpha=0.05, treat1$dbpdif, treat2$dbpdif, delta_dif=5)
-powertest(alpha=0.05, treat1$dbp_end, treat2$dbp_end, delta_dif=5)
+powertest(alpha=0.05, data1$dbpdif, data2$dbpdif, delta_dif=5)
+powertest(alpha=0.05, data1$dbp_end, data2$dbp_end, delta_dif=5)
 ```
 
 #######################
