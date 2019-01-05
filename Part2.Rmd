@@ -39,7 +39,7 @@ data$treatment <- as.factor(mapvalues(
 data$sex <- as.factor(mapvalues(data$sex, c(0, 1), c("Female", "Male")))
 # 80% adherence rule
 data <- data[data$comp >= 0.8,]
-# Removal of outlier
+##TS: don't we remove the patient with a blood pressure of 66?
 data=data[data$dbp3 != 66,]
 # Subset of treatment 1 and the placebo
 data12 <- data[data$treatment != "Treatment 3",]
@@ -124,7 +124,7 @@ qqnorm(rend2); qqline(rend2)
 ## show similar deviations as the QQplots of the data
 ```
 
-## Simulation with relative differences
+## Permutation with relative differences
 
 ```{r}
 ## 10000 simulations for each of 41 differences in means, for both
@@ -143,7 +143,7 @@ for(y in 0:40){
   # Array of p-values
   pdif <- vector(, n.sim)
   pend <- vector(, n.sim)
-  # Simulate
+  # Permutate
   for(i in 1:n.sim) {
     # dbp_dif
     mu_dif1.2 <- mu_dif1 + (abs(mu_dif1) - abs(mu_dif2)) * x
@@ -175,10 +175,10 @@ legend(33.77, 1.036, legend=c("dbp_dif", "dbp_end"),
 
 dbp_end has more power when adjusting means by a relative difference
 
-## Simulation with absolute differences
+## Permutation with absolute differences
 
 ```{r}
-# Power simulation function
+# Power simulations
 power_f_delta <- function(N.sim, variable1, variable2){
   pdif <- vector()
   power <- vector()
@@ -215,9 +215,9 @@ power_f_delta <- function(N.sim, variable1, variable2){
 # Amount of simulations
 n.sim <- 10000
 
-# Simulate dbp_end
+# Permutate dbp_end
 dbpend_power_sim <- power_f_delta(n.sim, data1$dbp_end, data2$dbp_end)
-# Simulate dbp_dif
+# permutate dbp_dif
 dbpdif_power_sim <- power_f_delta(n.sim, data1$dbpdif, data2$dbpdif)
 
 # Plot the result
@@ -230,52 +230,56 @@ lines(dbpdif_power_sim, col='blue')
 
 dbp_dif has more power when adjusting means by an absolute difference.
 
-##################
-# 2 Analytical   #
-##################
+####################################################
+# 2. Analytical calculations on the observed Power #
+####################################################
+
+## Relative difference in means
+
 ```{r}
-##Analytical approach to the power of the t-test
 alpha <- 0.05
 n <- n1 + n2
-#Alpha is not divided by 2, as we test one-sided
-t.alpha <- qt(1-alpha, df = n - 2)
+# Alpha is not divided by 2, as we test one-sided
+t.alpha <- qt(1-alpha, df=n - 2)
 
-#With dbpdif, where the difference between the groups is 42.5% of the observed difference
+# dbpdif: with a difference between groups of 42.5% of observed difference
 delta_dif <- -(mu_dif1 - mu_dif2) * 0.425
-lambda_dif <- delta_dif /  sqrt(var(data$dbpdif[data$treatment == "Treatment 1"])/n1 + 
-                                      var(data$dbpdif[data$treatment == "Placebo"])/n2)
-1 - pt(t.alpha, df = n - 2, ncp = lambda_dif)
+lambda_dif <- delta_dif / sqrt(var(data1$dbpdif)/n1 + var(data2$dbpdif)/n2)
+1 - pt(t.alpha, df=n - 2, ncp=lambda_dif)
 
-#With dbp_end, where the difference between the groups is 42,5% of the observed difference
+# dbp_end: with a difference between groups of 42.5% of observed difference
 delta_end <- -(mu_end1 - mu_end2) * 0.425
-lambda_end <- delta_end /  sqrt(var(data$dbp_end[data$treatment == "Treatment 1"])/n1 + 
-                                      var(data$dbp_end[data$treatment == "Placebo"])/n2)
-1 - pt(t.alpha, df = n - 2, ncp = lambda_end)
+lambda_end <- delta_end / sqrt(var(data1$dbp_end)/n1 + var(data2$dbp_end)/n2)
+1 - pt(t.alpha, df=n - 2, ncp=lambda_end)
 
-#Non-parametric alternative: The l (lambda) is much too large, this doesn't work
-l_dif.2 <- sqrt((12 * n1 * n2) / (n + 1)) * delta_dif.2
-1 - pt(t.alpha, df = n - 2, ncp = l_dif.2)
+# Non-parametric alternative: l (lambda) is too large, this doesn't work
+#l_dif.2 <- sqrt((12 * n1 * n2) / (n + 1)) * delta_dif.2
+#1 - pt(t.alpha, df=n - 2, ncp=l_dif.2)
+```
 
-######
-#RB power function to compare hard differences
-######
-powertest <- function(alpha = 0.05, variable1, variable2, delta_dif){
-n1 <-length(variable1)
-n2 <- length(variable2)
-n <- n1+n2
-#Alpha is not divided by 2, as we test one-sided
-t.alpha <- qt(1-alpha, df = n - 2)
-#With dbpdif, where the difference between the groups is 42.5% of the observed difference
-lambda_dif <- delta_dif /  sqrt(var(variable1)/n1 + var(variable2)/n2)
-print(1 - pt(t.alpha, df = n - 2, ncp = lambda_dif))
+## Absolute difference in means
+
+```{r}
+# power function to compare hard differences
+powertest <- function(alpha=0.05, variable1, variable2, delta_dif){
+  n1 <-length(variable1)
+  n2 <- length(variable2)
+  n <- n1+n2
+  # Alpha is not divided by 2, as we test one-sided
+  t.alpha <- qt(1-alpha, df=n - 2)
+  lambda_dif <- delta_dif /  sqrt(var(variable1)/n1 + var(variable2)/n2)
+  print(1 - pt(t.alpha, df=n - 2, ncp=lambda_dif))
 }
 
-powertest(alpha = 0.05, data$dbpdif[data$treatment == "Treatment 1"], data$dbpdif[data$treatment == "Placebo"], delta_dif = 3)
-powertest(alpha = 0.05, data$dbp_end[data$treatment == "Treatment 1"], data$dbp_end[data$treatment == "Placebo"], delta_dif = 3)
+# Absolute difference of 3
+powertest(alpha=0.05, data1$dbpdif, data2$dbpdif, delta_dif=3)
+powertest(alpha=0.05, data1$dbp_end, data2$dbp_end, delta_dif=3)
 
-powertest(alpha = 0.05, treat1$dbpdif, treat2$dbpdif,   5)
-powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, 5)
+# Absolute difference of 5
+powertest(alpha=0.05, treat1$dbpdif, treat2$dbpdif, delta_dif=5)
+powertest(alpha=0.05, treat1$dbp_end, treat2$dbp_end, delta_dif=5)
 ```
+
 
 ###################
 # Lowest p-value   #
