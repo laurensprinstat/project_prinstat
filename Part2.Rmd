@@ -365,10 +365,8 @@ for(i in 1 : 10000) {
   p_min[i] <- min(c(t_test_end$p.value, t_test_dif$p.value))
   p_and[i] <- max(c(t_test_end$p.value, t_test_dif$p.value))
 }
-#Type I error rate is well-controlled for the individual variables
-mean(p_end < 0.05)
-mean(p_dif < 0.05)
-#However, the Type I error rate is too high when the lowest p-value of the two is used.
+
+#Corrected Type I error rate:
 mean((p_min * 2) < 0.05)
 ```
 ###################################################
@@ -376,8 +374,8 @@ mean((p_min * 2) < 0.05)
 ###################################################
 
 ```{R}
-#dbp_end and dbp_dif are simulated simultaneously, but dependent on each other, under H0 and both are tested for a significant effect.
-#For each simulation, the lowest p-value of the two
+#dbp_end and dbp_dif are simulated simultaneously, but dependent on each other with the original means. 
+#Both are tested for a significant effect and the lowest p-value of the two is taken, but corrected via the Bonferroni method.
 data1 <- data[data$treatment == "Treatment 1",]
 data2 <- data[data$treatment == "Placebo",]
 
@@ -422,8 +420,6 @@ for(i in 1 : 10000) {
                     t_test_dif$p.value, method="bonferroni", n=2))
 }
 
-#However, the Type I error rate is too high when the lowest p-value of the two is used.
+#Power:
 mean(p_min < 0.05)
-
-
 ```
