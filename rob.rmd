@@ -174,3 +174,24 @@ lines(dbpdif_power_sim, col='green')
 
 ```
 Conclusion 1: From the simulation we can clearly see that dbpdif has more power
+
+
+```{r}
+##Analytical approach to the power of the t-test
+
+powertest <- function(alpha = 0.05, variable1, variable2, delta_dif){
+n1 <-length(variable1)
+n2 <- length(variable2)
+n <- n1+n2
+#Alpha is not divided by 2, as we test one-sided
+t.alpha <- qt(1-alpha, df = n - 2)
+#With dbpdif, where the difference between the groups is 42.5% of the observed difference
+lambda_dif <- delta_dif /  sqrt(var(variable1)/n1 + var(variable2)/n2)
+print(1 - pt(t.alpha, df = n - 2, ncp = lambda_dif))
+}
+
+powertest(alpha = 0.05, treat1$dbpdif, treat2$dbpdif, 4.141273)
+powertest(alpha = 0.05, treat1$dbp_end, treat2$dbp_end, 4.141273)
+
+
+```
